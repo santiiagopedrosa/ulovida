@@ -121,6 +121,13 @@ for (const input of document.querySelectorAll('input[type=file][data-max]')) {
   input.addEventListener('change', async () => {
     const file = input.files[0];
     if (!file || !file.type.startsWith('image/')) return;
+    // GIFs não passam pelo recorte (perderiam a animação): vão tal como estão.
+    if (file.type === 'image/gif') {
+      if (file.size > 4 * 1024 * 1024) { alert('Esse GIF é demasiado grande (máximo 4 MB).'); input.value = ''; return; }
+      if (preview) { preview.src = URL.createObjectURL(file); preview.hidden = false; preview.dataset.shape = 'gif'; }
+      input.dispatchEvent(new CustomEvent('cropped', { bubbles: true }));
+      return;
+    }
     let bitmap;
     try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { return; }
 

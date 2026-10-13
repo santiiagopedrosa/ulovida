@@ -12,6 +12,11 @@ const CLIP = 15; // segundos de música por story
 
 let stream = null, facing = 'environment';
 let bitmap = null, zoom = 1, ox = 0, oy = 0, base = 1;
+// Vídeo: o clip a editar (gravado ou da galeria) e se deve ser espelhado (câmara frontal).
+let clip = null; // { url, el, mirror }
+const VIDEO_MAX = 15; // segundos
+const VIDEO_TYPES = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+const pickVideoType = () => (window.MediaRecorder ? VIDEO_TYPES.find((t) => MediaRecorder.isTypeSupported(t)) : null);
 
 const setState = (s) => { cam.dataset.state = s; };
 
@@ -23,6 +28,11 @@ async function startCamera() {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
     });
+    // O microfone (para os vídeos) é pedido à parte, para não atrasar a câmara; sem ele, os vídeos ficam sem som.
+    const current = stream;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((mic) => { if (stream === current) mic.getAudioTracks().forEach((t) => stream.addTrack(t)); else mic.getTracks().forEach((t) => t.stop()); })
+      .catch(() => {});
     video.srcObject = stream;
     video.classList.toggle('mirror', facing === 'user');
     errorEl.hidden = true;
@@ -45,7 +55,51 @@ cam.querySelector('[data-act=flip]').addEventListener('click', () => {
   startCamera();
 });
 
-cam.querySelector('.cam-shutter').addEventListener('click', async () => {
+// Disparo: toque = foto; manter carregado = vídeo (até 15 s).
+const shutter = cam.querySelector('.cam-shutter');
+let holdTimer = null, recorder = null, recStart = 0;
+shutter.addEventListener('pointerdown', (e) => {
+  if (!video.videoWidth || shutter.disabled) return;
+  shutter.setPointerCapture(e.pointerId);
+  holdTimer = setTimeout(startRecording, 350);
+});
+shutter.addEventListener('pointerup', () => {
+  if (recorder) { stopRecording(); return; }
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; takePhoto(); }
+});
+shutter.addEventListener('pointercancel', () => { clearTimeout(holdTimer); holdTimer = null; if (recorder) stopRecording(); });
+shutter.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); takePhoto(); } });
+
+function startRecording() {
+  holdTimer = null;
+  const type = pickVideoType();
+  if (!type || !stream) { takePhoto(); return; }
+  const chunks = [];
+  recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 4_000_000 });
+  recorder.ondataavailable = (ev) => { if (ev.data.size) chunks.push(ev.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: type.split(';')[0] });
+    recorder = null;
+    shutter.classList.remove('recording');
+    shutter.style.removeProperty('--p');
+    editVideo(blob, facing === 'user');
+  };
+  recorder.start(250);
+  recStart = performance.now();
+  shutter.classList.add('recording');
+  const ring = () => {
+    if (!recorder) return;
+    const p = (performance.now() - recStart) / (VIDEO_MAX * 1000);
+    shutter.style.setProperty('--p', Math.min(1, p));
+    if (p >= 1) stopRecording(); else requestAnimationFrame(ring);
+  };
+  requestAnimationFrame(ring);
+}
+function stopRecording() {
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+}
+
+async function takePhoto() {
   if (!video.videoWidth) return;
   const c = document.createElement('canvas');
   c.width = video.videoWidth; c.height = video.videoHeight;
@@ -56,12 +110,13 @@ cam.querySelector('.cam-shutter').addEventListener('click', async () => {
   frame.classList.add('flash');
   setTimeout(() => frame.classList.remove('flash'), 300);
   edit(await createImageBitmap(c));
-});
+}
 
 gallery.addEventListener('change', async () => {
   const file = gallery.files[0];
   gallery.value = '';
   if (!file) return;
+  if (file.type.startsWith('video/')) { editVideo(file, false); return; }
   try { edit(await createImageBitmap(file, { imageOrientation: 'from-image' })); } catch { alert('Não foi possível abrir essa imagem.'); }
 });
 
@@ -87,8 +142,35 @@ function setZoom(z, px = W() / 2, py = H() / 2) {
   oy = py - (py - oy) * (scale() / s0);
   clamp(); draw();
 }
+// Editar um vídeo: fica a repetir no enquadramento, com os textos e a música por cima.
+function editVideo(blob, mirror) {
+  if (!pickVideoType()) { alert('Este browser não consegue preparar vídeos. Experimenta com uma foto.'); return; }
+  stopCamera();
+  dropClip();
+  const el = document.createElement('video');
+  el.className = `cam-clip${mirror ? ' mirror' : ''}`;
+  el.playsInline = true; el.loop = true; el.muted = Boolean(music);
+  el.src = URL.createObjectURL(blob);
+  frame.prepend(el);
+  clip = { url: el.src, el, mirror };
+  el.addEventListener('loadedmetadata', () => { if (el.duration > VIDEO_MAX + 0.5) clip.long = true; });
+  // Mantém o vídeo dentro dos primeiros 15 s.
+  el.addEventListener('timeupdate', () => { if (el.currentTime > VIDEO_MAX) el.currentTime = 0; });
+  el.play().catch(() => {});
+  bitmap = null;
+  cam.dataset.kind = 'video';
+  setState('edit');
+  requestAnimationFrame(renderTexts);
+}
+function dropClip() {
+  if (!clip) return;
+  clip.el.pause(); clip.el.remove(); URL.revokeObjectURL(clip.url);
+  clip = null;
+}
+
 function edit(bmp) {
   bitmap = bmp;
+  cam.dataset.kind = 'photo';
   stopCamera();
   setState('edit');
   requestAnimationFrame(() => {
@@ -128,6 +210,7 @@ stage.addEventListener('wheel', (e) => {
 
 cam.querySelector('[data-act=back]').addEventListener('click', () => {
   bitmap = null;
+  dropClip();
   texts.length = 0; renderTexts();
   setMusic(null);
   setState('camera');
@@ -372,6 +455,7 @@ function placeChip() {
 }
 function setMusic(m) {
   music = m && { x: 0.5, y: 0.82, hidden: false, ...m };
+  if (clip) clip.el.muted = Boolean(music);
   if (stickerToggle) stickerToggle.checked = !music?.hidden;
   placeChip();
   audio.pause();
@@ -516,8 +600,84 @@ function trackItem(t) {
 }
 
 // ---------- publicar ----------
+// Prepara o vídeo final: 720×1280, até 15 s, com os textos gravados em cada fotograma.
+// Reproduz o clip num elemento à parte e grava um canvas (o som original vai junto, exceto se houver música).
+const V_W = 720, V_H = 1280, MAX_BYTES = 3.7 * 1024 * 1024;
+async function encodeVideo(onProgress) {
+  const type = pickVideoType();
+  const src = document.createElement('video');
+  src.playsInline = true; src.preload = 'auto'; src.src = clip.url;
+  // Fica na página (invisível): alguns browsers não descodificam vídeos fora dela.
+  Object.assign(src.style, { position: 'fixed', left: '0', top: '0', width: '2px', height: '2px', opacity: '0', pointerEvents: 'none' });
+  document.body.append(src);
+  await new Promise((ok, fail) => { src.onloadeddata = ok; src.onerror = () => fail(new Error('Não foi possível ler o vídeo.')); });
+  const dur = Math.min(VIDEO_MAX, Number.isFinite(src.duration) ? src.duration : VIDEO_MAX);
+
+  // Camada com os textos, desenhada uma vez.
+  const overlay = document.createElement('canvas');
+  overlay.width = V_W; overlay.height = V_H;
+  drawTexts(overlay.getContext('2d'), V_W, V_H);
+
+  const out = document.createElement('canvas');
+  out.width = V_W; out.height = V_H;
+  const ctx = out.getContext('2d');
+  const paint = () => {
+    const vw = src.videoWidth, vh = src.videoHeight;
+    const k = Math.max(V_W / vw, V_H / vh);
+    const dw = vw * k, dh = vh * k;
+    ctx.save();
+    if (clip.mirror) { ctx.translate(V_W, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(src, (V_W - dw) / 2, (V_H - dh) / 2, dw, dh);
+    ctx.restore();
+    ctx.drawImage(overlay, 0, 0);
+  };
+
+  // Capa: primeiro fotograma (com os textos).
+  paint();
+  const poster = await new Promise((ok) => out.toBlob(ok, 'image/jpeg', 0.85));
+
+  const streamOut = out.captureStream(30);
+  let audioCtx = null;
+  if (!music) {
+    try {
+      audioCtx = new AudioContext();
+      const dest = audioCtx.createMediaStreamDestination();
+      audioCtx.createMediaElementSource(src).connect(dest);
+      dest.stream.getAudioTracks().forEach((t) => streamOut.addTrack(t));
+    } catch {}
+  } else {
+    src.muted = true;
+  }
+  const bps = Math.max(600_000, Math.min(2_500_000, Math.floor((MAX_BYTES * 8) / dur) - 160_000));
+  const rec = new MediaRecorder(streamOut, { mimeType: type, videoBitsPerSecond: bps, audioBitsPerSecond: 96_000 });
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  const done = new Promise((ok) => { rec.onstop = ok; });
+
+  src.currentTime = 0;
+  rec.start(500);
+  await src.play();
+  await new Promise((ok) => {
+    const step = () => {
+      paint();
+      onProgress(Math.min(1, src.currentTime / dur));
+      if (src.ended || src.currentTime >= dur) { ok(); return; }
+      requestAnimationFrame(step);
+    };
+    step();
+  });
+  src.pause();
+  rec.stop();
+  await done;
+  audioCtx?.close();
+  src.remove();
+  const video = new Blob(chunks, { type: type.split(';')[0] });
+  if (video.size > 4 * 1024 * 1024) throw new Error('O vídeo ficou demasiado grande. Experimenta um mais curto.');
+  return { video, poster, ext: type.includes('mp4') ? 'mp4' : 'webm' };
+}
+
 publishBtn.addEventListener('click', async () => {
-  if (!bitmap) return;
+  if (!bitmap && !clip) return;
   if (!editor.hidden) closeTextEditor();
   publishBtn.disabled = true;
   const label = publishBtn.innerHTML;
@@ -525,15 +685,24 @@ publishBtn.addEventListener('click', async () => {
   try {
     await document.fonts.ready;
     await Promise.all(texts.map((t) => document.fonts.load(FONT(40, t), shown(t)).catch(() => {})));
-    const out = document.createElement('canvas');
-    out.width = OUT_W; out.height = OUT_H;
-    const ctx = out.getContext('2d');
-    const f = OUT_W / W();
-    ctx.drawImage(bitmap, ox * f, oy * f, bitmap.width * scale() * f, bitmap.height * scale() * f);
-    drawTexts(ctx, OUT_W, OUT_H);
-    const blob = await new Promise((ok) => out.toBlob(ok, 'image/jpeg', 0.88));
     const body = new FormData();
-    body.append('photo', blob, 'story.jpg');
+    if (clip) {
+      clip.el.pause();
+      audio.pause();
+      const { video: vid, poster, ext } = await encodeVideo((p) => { publishBtn.textContent = `A preparar vídeo… ${Math.round(p * 100)}%`; });
+      publishBtn.textContent = 'A publicar…';
+      body.append('photo', vid, `momento.${ext}`);
+      body.append('poster', poster, 'capa.jpg');
+    } else {
+      const out = document.createElement('canvas');
+      out.width = OUT_W; out.height = OUT_H;
+      const ctx = out.getContext('2d');
+      const f = OUT_W / W();
+      ctx.drawImage(bitmap, ox * f, oy * f, bitmap.width * scale() * f, bitmap.height * scale() * f);
+      drawTexts(ctx, OUT_W, OUT_H);
+      const blob = await new Promise((ok) => out.toBlob(ok, 'image/jpeg', 0.88));
+      body.append('photo', blob, 'story.jpg');
+    }
     if (music) {
       body.append('music_title', music.title);
       body.append('music_artist', music.artist);
@@ -554,6 +723,7 @@ publishBtn.addEventListener('click', async () => {
     alert(err.message || 'Não foi possível publicar. Tenta outra vez.');
     publishBtn.disabled = false;
     publishBtn.innerHTML = label;
+    clip?.el.play().catch(() => {});
   }
 });
 

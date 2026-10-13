@@ -5,7 +5,13 @@ const bars = [...viewer.querySelectorAll('.story-bars i')];
 const timeEl = viewer.querySelector('.story-time');
 const mine = viewer.dataset.mine === '1';
 // 5 s por foto; com música, 15 s (o trecho escolhido), como no Instagram.
-const duration = (s) => (s.dataset.music ? 15000 : 5000);
+// Vídeo: a duração do próprio vídeo (até 15 s).
+const vidOf = (s) => s.querySelector('video');
+const duration = (s) => {
+  const v = vidOf(s);
+  if (v) return Math.min(15, Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 15) * 1000;
+  return s.dataset.music ? 15000 : 5000;
+};
 const CLIP = 15;
 let i = Number(viewer.dataset.start) || 0;
 let started = 0, elapsed = 0, paused = false, raf;
@@ -30,22 +36,38 @@ function playMusic() {
   audio.muted = muted;
   audio.play().catch(() => { muted = autoMuted = true; audio.muted = true; audio.play().catch(() => {}); setSoundIcon(); });
 }
+// Som do vídeo: só quando o momento não tem música (a música tem prioridade).
+function playVideo(s) {
+  const v = vidOf(s);
+  if (!v) return;
+  v.muted = Boolean(s.dataset.music) || muted;
+  v.play().catch(() => {
+    if (!v.muted) { muted = autoMuted = true; v.muted = true; setSoundIcon(); }
+    v.play().catch(() => {});
+  });
+}
 // Primeiro toque no ecrã liga o som que o browser bloqueou.
+const applyMuted = () => {
+  audio.muted = muted;
+  const v = vidOf(slides[i]);
+  if (v && !slides[i].dataset.music) v.muted = muted;
+};
 document.addEventListener('pointerdown', (e) => {
   if (!autoMuted || soundBtn.contains(e.target)) return;
   autoMuted = muted = false;
-  audio.muted = false;
-  audio.play().catch(() => {});
+  applyMuted();
+  if (slides[i].dataset.music) audio.play().catch(() => {});
   setSoundIcon();
 }, { capture: true });
-soundBtn.addEventListener('click', () => { autoMuted = false; muted = !muted; audio.muted = muted; if (!muted) audio.play().catch(() => {}); setSoundIcon(); });
+soundBtn.addEventListener('click', () => { autoMuted = false; muted = !muted; applyMuted(); if (!muted && slides[i].dataset.music) audio.play().catch(() => {}); setSoundIcon(); });
 function updateMusic(s) {
   const src = s.dataset.music;
-  soundBtn.hidden = !src;
+  soundBtn.hidden = !src && !vidOf(s);
+  if (!src && vidOf(s)) setSoundIcon();
   // O autocolante pode estar escondido (a música toca na mesma) e fica onde quem publicou o pôs.
   musicEl.hidden = !src || s.dataset.musicHidden === '1';
   // Posição relativa à foto (9:16), não ao ecrã, para ficar onde foi posto no editor.
-  const img = s.querySelector('img').getBoundingClientRect(), v = viewer.getBoundingClientRect();
+  const img = s.querySelector('img, video').getBoundingClientRect(), v = viewer.getBoundingClientRect();
   const fx = Number(s.dataset.musicX) || 0.5, fy = Number(s.dataset.musicY) || 0.82;
   musicEl.style.left = `${img.left - v.left + fx * img.width}px`;
   musicEl.style.top = `${img.top - v.top + fy * img.height}px`;
@@ -65,7 +87,13 @@ function show(n) {
   if (n < 0) n = 0;
   if (n >= slides.length) { audio.pause(); location.href = '/eventos'; return; }
   i = n; elapsed = 0; started = performance.now();
-  slides.forEach((s, k) => { s.hidden = k !== i; });
+  slides.forEach((s, k) => {
+    s.hidden = k !== i;
+    const v = vidOf(s);
+    if (v && k !== i) v.pause();
+  });
+  const cur = vidOf(slides[i]);
+  if (cur) { cur.currentTime = 0; playVideo(slides[i]); }
   bars.forEach((b, k) => { b.style.width = k < i ? '100%' : '0%'; });
   const s = slides[i];
   timeEl.textContent = s.dataset.time;
@@ -83,8 +111,11 @@ function show(n) {
 }
 function tick(now) {
   if (!paused) {
-    const t = elapsed + (now - started);
+    const v = vidOf(slides[i]);
+    // Nos vídeos o progresso segue o próprio vídeo (se parar para carregar, a barra também para).
+    const t = v ? v.currentTime * 1000 : elapsed + (now - started);
     const d = duration(slides[i]);
+    if (v && v.ended) { show(i + 1); raf = requestAnimationFrame(tick); return; }
     bars[i].style.width = `${Math.min(100, (t / d) * 100)}%`;
     if (t >= d) show(i + 1);
   }
@@ -94,11 +125,11 @@ function tick(now) {
 const holds = new Set();
 function hold(reason) {
   holds.add(reason);
-  if (!paused) { paused = true; elapsed += performance.now() - started; audio.pause(); }
+  if (!paused) { paused = true; elapsed += performance.now() - started; audio.pause(); vidOf(slides[i])?.pause(); }
 }
 function release(reason) {
   holds.delete(reason);
-  if (paused && !holds.size) { paused = false; started = performance.now(); if (slides[i].dataset.music) playMusic(); }
+  if (paused && !holds.size) { paused = false; started = performance.now(); if (slides[i].dataset.music) playMusic(); if (vidOf(slides[i])) vidOf(slides[i]).play().catch(() => {}); }
 }
 
 viewer.querySelector('.story-nav.prev').addEventListener('click', () => show(i - 1));

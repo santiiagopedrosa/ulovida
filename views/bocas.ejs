@@ -11,15 +11,17 @@
   <%- include('partials/avatar', { u: me }) %>
   <div class="composer-main">
     <textarea name="body" rows="2" maxlength="<%= max %>" placeholder="Manda uma boca…" aria-label="Nova boca"><%= body %></textarea>
-    <div class="composer-photo" hidden>
+    <input type="hidden" name="gif_url">
+    <div class="composer-photo media-preview" hidden>
       <img id="boca-preview" class="boca-photo" alt="">
-      <button type="button" class="composer-photo-del" aria-label="Tirar foto"><%- include('partials/icon', { name: 'x' }) %></button>
+      <button type="button" class="composer-photo-del media-del" aria-label="Tirar foto ou GIF"><%- include('partials/icon', { name: 'x' }) %></button>
     </div>
     <div class="composer-foot">
       <label class="icon-btn file-btn composer-img" title="Juntar foto" aria-label="Juntar foto">
         <%- include('partials/icon', { name: 'image' }) %>
         <input type="file" name="photo" accept="image/*" data-max="1600" data-aspects="16/9,1/1,4/5" data-preview="boca-preview">
       </label>
+      <% if (gifsEnabled) { %><button type="button" class="gif-btn" data-gif-picker aria-label="Escolher GIF">GIF</button><% } %>
       <span class="composer-count muted small" data-max="<%= max %>"><%= max - body.length %></span>
       <button class="btn small shine">Mandar boca</button>
     </div>
@@ -32,4 +34,5 @@
 </div>
 <script src="/upload.js" defer></script>
 <script src="/bocas.js" defer></script>
+<script src="/gifs.js" defer></script>
 <%- include('partials/footer') %>

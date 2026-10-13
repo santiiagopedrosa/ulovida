@@ -142,12 +142,13 @@ app.use(async (req, res, next) => {
     lastCleanup = Date.now();
     await db.run('DELETE FROM sessions WHERE expires_at < ?', Date.now());
     await db.run('DELETE FROM email_tokens WHERE expires_at < ?', Date.now());
-    const old = await db.all('SELECT id, image_id FROM stories WHERE expires_at < ?', Date.now());
+    const old = await db.all('SELECT id, image_id, poster_id FROM stories WHERE expires_at < ?', Date.now());
     for (const st of old) {
       await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
       await db.run('DELETE FROM story_likes WHERE story_id = ?', st.id);
       await db.run('DELETE FROM stories WHERE id = ?', st.id);
       await deleteImage(st.image_id);
+      await deleteImage(st.poster_id);
     }
   }
   next();
@@ -162,7 +163,7 @@ app.use(async (req, res, next) => {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
     unreadCount: req.me ? (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n : 0,
-    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince, staffRole,
+    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince, staffRole, gifsEnabled: Boolean(process.env.GIPHY_API_KEY),
     path: req.path,
     error: null,
   });
@@ -179,8 +180,25 @@ const photoUpload = (req, res, next) =>
     next();
   });
 
+// Momentos: foto ou vídeo (até 4 MB) e, para vídeo, uma imagem de capa.
+const storyMulter = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024, files: 2 } });
+const storyUpload = (req, res, next) =>
+  storyMulter.fields([{ name: 'photo', maxCount: 1 }, { name: 'poster', maxCount: 1 }])(req, res, (err) => {
+    if (err) req.uploadError = err.code === 'LIMIT_FILE_SIZE' ? 'O ficheiro é demasiado grande (máximo 4 MB).' : 'Não foi possível receber o ficheiro.';
+    req.file = req.files?.photo?.[0];
+    req.poster = req.files?.poster?.[0];
+    next();
+  });
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
 // Reduz, roda segundo o EXIF e converte para WebP (o que também apaga metadados como a localização GPS).
+// GIFs mantêm a animação (WebP animado).
 async function saveImage(file, kind) {
+  if (file.mimetype === 'image/gif') {
+    const data = await sharp(file.buffer, { animated: true }).resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 70 }).toBuffer();
+    const { lastInsertRowid } = await db.run('INSERT INTO images (data, mime) VALUES (?, ?)', data, 'image/webp');
+    return lastInsertRowid;
+  }
   const img = sharp(file.buffer).rotate();
   const sized = kind === 'avatar' ? img.resize(400, 400, { fit: 'cover' })
     : kind === 'story' ? img.resize(1080, 1920, { fit: 'inside', withoutEnlargement: true })
@@ -298,8 +316,19 @@ app.post('/sair', async (req, res) => {
 app.get('/img/:id', requireAuth, async (req, res) => {
   const img = await db.get('SELECT data, mime FROM images WHERE id = ?', req.params.id);
   if (!img) return res.status(404).end();
-  res.set({ 'Content-Type': img.mime, 'Cache-Control': 'private, max-age=31536000, immutable' });
-  res.send(Buffer.from(img.data));
+  const buf = Buffer.from(img.data);
+  res.set({ 'Content-Type': img.mime, 'Cache-Control': 'private, max-age=31536000, immutable', 'Accept-Ranges': 'bytes' });
+  // Os vídeos são pedidos aos bocados (o Safari exige-o para os reproduzir).
+  const range = /^bytes=(\d*)-(\d*)$/.exec(req.get('range') || '');
+  if (range) {
+    let start = range[1] === '' ? buf.length - Number(range[2]) : Number(range[1]);
+    let end = range[1] !== '' && range[2] !== '' ? Number(range[2]) : buf.length - 1;
+    start = Math.max(0, start); end = Math.min(buf.length - 1, end);
+    if (start > end) return res.status(416).set('Content-Range', `bytes */${buf.length}`).end();
+    res.status(206).set('Content-Range', `bytes ${start}-${end}/${buf.length}`);
+    return res.send(buf.subarray(start, end + 1));
+  }
+  res.send(buf);
 });
 
 app.get('/pessoas', requireAuth, async (req, res) => {
@@ -389,7 +418,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
   // Barra de stories: as minhas e as de quem eu sigo, primeiro as que ainda não vi.
   const me = Number(req.me.id);
   const stories = await db.all(`SELECT u.id, u.name, u.photo_id, MAX(s.created_at) AS last,
-                                  (SELECT s2.image_id FROM stories s2 WHERE s2.user_id = u.id AND s2.expires_at > ${Date.now()}
+                                  (SELECT COALESCE(s2.poster_id, s2.image_id) FROM stories s2 WHERE s2.user_id = u.id AND s2.expires_at > ${Date.now()}
                                    ORDER BY s2.created_at DESC LIMIT 1) AS cover,
                                   SUM(CASE WHEN v.user_id IS NULL AND s.user_id != ${me} THEN 1 ELSE 0 END) AS unseen
                                 FROM stories s JOIN users u ON u.id = s.user_id
@@ -496,7 +525,36 @@ const backTo = (req, fallback) => {
   const v = String(req.body.voltar || '');
   return v.startsWith('/') && !v.startsWith('//') ? v : fallback;
 };
-const commentsFor = (type, id) => db.all(`SELECT c.id, c.body, c.created_at, c.user_id, u.name, u.photo_id, u.school
+// GIFs da GIPHY: só se aceitam links da própria GIPHY.
+const giphyUrl = (v) => {
+  try {
+    const u = new URL(String(v || ''));
+    return u.protocol === 'https:' && /(^|\.)giphy\.com$/.test(u.hostname) ? u.href.slice(0, 500) : null;
+  } catch { return null; }
+};
+
+// Pesquisa de GIFs (precisa de GIPHY_API_KEY; sem chave, o botão nem aparece).
+app.get('/gifs', requireAuth, async (req, res) => {
+  const key = process.env.GIPHY_API_KEY;
+  if (!key) return res.status(404).json([]);
+  const q = str(req.query.q, 60);
+  const params = new URLSearchParams({ api_key: key, limit: '24', rating: 'pg-13', bundle: 'messaging_non_clips' });
+  if (q) { params.set('q', q); params.set('lang', 'pt'); }
+  try {
+    const r = await fetch(`https://api.giphy.com/v1/gifs/${q ? 'search' : 'trending'}?${params}`, { signal: AbortSignal.timeout(6000) });
+    const { data = [] } = await r.json();
+    res.json(data.map((g) => ({
+      id: g.id, title: g.title,
+      preview: g.images?.fixed_width_small?.webp || g.images?.fixed_width_small?.url,
+      url: g.images?.fixed_width?.webp || g.images?.fixed_width?.url,
+      w: Number(g.images?.fixed_width?.width) || 200, h: Number(g.images?.fixed_width?.height) || 200,
+    })).filter((g) => g.url));
+  } catch {
+    res.status(502).json([]);
+  }
+});
+
+const commentsFor = (type, id) => db.all(`SELECT c.id, c.body, c.created_at, c.user_id, c.gif_url, c.image_id, u.name, u.photo_id, u.school
   FROM comments c JOIN users u ON u.id = c.user_id WHERE c.target_type = ? AND c.target_id = ? ORDER BY c.id`, type, id);
 const bocaSelect = (meId) => `SELECT p.*, u.name, u.photo_id, u.school, u.course,
     (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS fogos,
@@ -514,14 +572,16 @@ app.post('/bocas', requireAuth, photoUpload, async (req, res) => {
   const fail = async (error) => res.status(400).render('bocas', {
     title: 'Bocas', bocas: await db.all(`${bocaSelect(req.me.id)} ORDER BY p.id DESC LIMIT 60`), max: BOCA_MAX, body, error });
   if (req.uploadError) return fail(req.uploadError);
-  if (!body && !req.file) return fail('Escreve alguma coisa ou junta uma foto.');
+  const gif = giphyUrl(req.body.gif_url);
+  if (!body && !req.file && !gif) return fail('Escreve alguma coisa ou junta uma foto ou um GIF.');
   if (body.length > BOCA_MAX) return fail(`Máximo de ${BOCA_MAX} caracteres.`);
   if (tooSoon(req.me.id, 'boca', 15_000)) return fail('Calma! Espera uns segundos antes de mandar outra boca.');
   let imageId = null;
   if (req.file) {
     try { imageId = await saveImage(req.file, 'event'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
   }
-  const { lastInsertRowid } = await db.run('INSERT INTO posts (user_id, body, created_at, image_id) VALUES (?, ?, ?, ?)', req.me.id, body, Date.now(), imageId);
+  const { lastInsertRowid } = await db.run('INSERT INTO posts (user_id, body, created_at, image_id, gif_url) VALUES (?, ?, ?, ?, ?)',
+    req.me.id, body, Date.now(), imageId, imageId ? null : gif);
   res.redirect(`/bocas#b${lastInsertRowid}`);
 });
 
@@ -544,6 +604,7 @@ app.post('/bocas/:id/fogo', requireAuth, async (req, res) => {
 app.post('/bocas/:id/apagar', requireAuth, async (req, res) => {
   const boca = await db.get('SELECT id, user_id, image_id FROM posts WHERE id = ?', req.params.id);
   if (boca && (boca.user_id === req.me.id || req.me.is_admin)) {
+    for (const c of await db.all("SELECT image_id FROM comments WHERE target_type = 'post' AND target_id = ? AND image_id IS NOT NULL", boca.id)) await deleteImage(c.image_id);
     await db.run("DELETE FROM comments WHERE target_type = 'post' AND target_id = ?", boca.id);
     await db.run('DELETE FROM post_likes WHERE post_id = ?', boca.id);
     await db.run('DELETE FROM posts WHERE id = ?', boca.id);
@@ -570,21 +631,28 @@ for (const [route, type, find] of [
   ['bocas', 'post', (req) => db.get('SELECT id FROM posts WHERE id = ?', req.params.id)],
   ['eventos', 'event', (req) => db.get(`SELECT e.id FROM events e WHERE e.id = ? AND e.status = 'approved' AND ${visibleTo(req.me.id)}`, req.params.id)],
 ]) {
-  app.post(`/${route}/:id/comentar`, requireAuth, async (req, res) => {
+  app.post(`/${route}/:id/comentar`, requireAuth, photoUpload, async (req, res) => {
     const target = await find(req);
     if (!target) return res.redirect(`/${route}`);
     const body = str(req.body.body, COMMENT_MAX);
-    if (body && !tooSoon(req.me.id, 'comment', 4000)) {
-      await db.run('INSERT INTO comments (user_id, target_type, target_id, body, created_at) VALUES (?, ?, ?, ?, ?)', req.me.id, type, target.id, body, Date.now());
+    const gif = giphyUrl(req.body.gif_url);
+    if ((body || gif || req.file) && !req.uploadError && !tooSoon(req.me.id, 'comment', 4000)) {
+      let imageId = null;
+      if (req.file) { try { imageId = await saveImage(req.file, 'event'); } catch {} }
+      await db.run('INSERT INTO comments (user_id, target_type, target_id, body, created_at, gif_url, image_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        req.me.id, type, target.id, body, Date.now(), imageId ? null : gif, imageId);
     }
     res.redirect(`/${route}/${target.id}#comentarios`);
   });
 }
 
 app.post('/comentarios/:id/apagar', requireAuth, async (req, res) => {
-  const c = await db.get('SELECT id, user_id, target_type, target_id FROM comments WHERE id = ?', req.params.id);
+  const c = await db.get('SELECT id, user_id, target_type, target_id, image_id FROM comments WHERE id = ?', req.params.id);
   if (!c) return res.redirect('/eventos');
-  if (c.user_id === req.me.id || req.me.is_admin) await db.run('DELETE FROM comments WHERE id = ?', c.id);
+  if (c.user_id === req.me.id || req.me.is_admin) {
+    await db.run('DELETE FROM comments WHERE id = ?', c.id);
+    await deleteImage(c.image_id);
+  }
   res.redirect(`/${c.target_type === 'post' ? 'bocas' : 'eventos'}/${c.target_id}#comentarios`);
 });
 
@@ -644,13 +712,19 @@ const appleUrl = (v, hosts) => {
   } catch { return null; }
 };
 
-app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
+app.post('/stories/nova', requireAuth, storyUpload, async (req, res) => {
   const wantsJson = (req.get('accept') || '').includes('application/json');
   const fail = (error) => (wantsJson ? res.status(400).json({ error }) : res.status(400).render('story-nova', { title: 'Novo momento', error }));
   if (req.uploadError) return fail(req.uploadError);
-  if (!req.file) return fail('Escolhe uma foto.');
-  let imageId;
-  try { imageId = await saveImage(req.file, 'story'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
+  if (!req.file) return fail('Escolhe uma foto ou um vídeo.');
+  let imageId, posterId = null;
+  if (VIDEO_TYPES.includes(req.file.mimetype.split(';')[0])) {
+    // Vídeo já preparado no browser (720p, até 15 s): guarda-se tal como vem.
+    ({ lastInsertRowid: imageId } = await db.run('INSERT INTO images (data, mime) VALUES (?, ?)', req.file.buffer, req.file.mimetype.split(';')[0]));
+    if (req.poster) { try { posterId = await saveImage(req.poster, 'story'); } catch {} }
+  } else {
+    try { imageId = await saveImage(req.file, 'story'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
+  }
   const now = Date.now();
   const preview = appleUrl(req.body.music_preview, ['apple.com']);
   const music = preview ? [str(req.body.music_title, 120), str(req.body.music_artist, 120), preview,
@@ -658,9 +732,9 @@ app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
     Math.min(60, Math.max(0, Number(req.body.music_start) || 0))] : [null, null, null, null, null, 0];
   const frac = (v, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : d; };
   await db.run(`INSERT INTO stories (user_id, image_id, created_at, expires_at, music_title, music_artist, music_preview, music_artwork, music_url, music_start,
-      music_x, music_y, music_hidden)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music,
-    frac(req.body.music_x, 0.5), frac(req.body.music_y, 0.82), req.body.music_hidden === '1' ? 1 : 0);
+      music_x, music_y, music_hidden, poster_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music,
+    frac(req.body.music_x, 0.5), frac(req.body.music_y, 0.82), req.body.music_hidden === '1' ? 1 : 0, posterId);
   if (wantsJson) return res.json({ ok: true, redirect: '/eventos' });
   res.redirect('/eventos');
 });
@@ -668,7 +742,8 @@ app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
 app.get('/stories/:userId', requireAuth, async (req, res) => {
   const user = await db.get('SELECT id, name, photo_id FROM users WHERE id = ?', req.params.userId);
   if (!user || !await canSeeStoriesOf(req.me.id, user.id)) return res.redirect('/eventos');
-  const stories = await db.all(`SELECT s.*, (SELECT COUNT(*) FROM story_views v WHERE v.story_id = s.id) AS views,
+  const stories = await db.all(`SELECT s.*, (SELECT mime FROM images i WHERE i.id = s.image_id) AS mime,
+                                  (SELECT COUNT(*) FROM story_views v WHERE v.story_id = s.id) AS views,
                                   (SELECT COUNT(*) FROM story_likes l WHERE l.story_id = s.id) AS likes,
                                   EXISTS (SELECT 1 FROM story_likes l WHERE l.story_id = s.id AND l.user_id = ${Number(req.me.id)}) AS liked,
                                   EXISTS (SELECT 1 FROM story_views v WHERE v.story_id = s.id AND v.user_id = ?) AS seen
@@ -721,12 +796,13 @@ app.get('/stories/:id/vistas', requireAuth, async (req, res) => {
 });
 
 app.post('/stories/:id/apagar', requireAuth, async (req, res) => {
-  const st = await db.get('SELECT id, image_id FROM stories WHERE id = ? AND user_id = ?', req.params.id, req.me.id);
+  const st = await db.get('SELECT id, image_id, poster_id FROM stories WHERE id = ? AND user_id = ?', req.params.id, req.me.id);
   if (st) {
     await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
     await db.run('DELETE FROM story_likes WHERE story_id = ?', st.id);
     await db.run('DELETE FROM stories WHERE id = ?', st.id);
     await deleteImage(st.image_id);
+    await deleteImage(st.poster_id);
   }
   res.redirect('/eventos');
 });
@@ -750,7 +826,7 @@ app.get('/mensagens', requireAuth, async (req, res) => {
 });
 
 // Inclui a story a que a mensagem responde (a miniatura só aparece enquanto a story existir).
-const messagesBetween = (a, b, afterId = 0) => db.all(`SELECT m.id, m.sender_id, m.body, m.created_at, m.story_id, s.image_id AS story_image
+const messagesBetween = (a, b, afterId = 0) => db.all(`SELECT m.id, m.sender_id, m.body, m.created_at, m.story_id, COALESCE(s.poster_id, s.image_id) AS story_image
   FROM messages m LEFT JOIN stories s ON s.id = m.story_id AND s.expires_at > ${Date.now()}
   WHERE ((m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?)) AND m.id > ?
   ORDER BY m.id DESC LIMIT 100`, a, b, b, a, afterId).then((rows) => rows.reverse());

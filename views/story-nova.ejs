@@ -29,6 +29,7 @@
     <video playsinline muted autoplay data-show="camera"></video>
     <canvas class="cam-edit" data-show="edit"></canvas>
     <div class="cam-texts" data-show="edit"></div>
+    <p class="cam-hint" data-show="camera">Toca para foto · mantém para vídeo</p>
     <p class="cam-error" hidden>Não foi possível abrir a câmara.<br>Escolhe uma foto da galeria.</p>
     <% if (locals.error) { %><p class="cam-error"><%= error %></p><% } %>
     <button type="button" class="music-chip" data-show="edit" data-act="music" hidden>
@@ -40,9 +41,9 @@
   <div class="cam-bottom">
     <label class="cam-gallery" data-show="camera" aria-label="Escolher da galeria">
       <%- include('partials/icon', { name: 'image' }) %>
-      <input type="file" accept="image/*" hidden>
+      <input type="file" accept="image/*,video/*" hidden>
     </label>
-    <button type="button" class="cam-shutter" data-show="camera" aria-label="Tirar foto"></button>
+    <button type="button" class="cam-shutter" data-show="camera" aria-label="Tirar foto (mantém carregado para gravar vídeo)"></button>
     <button type="button" class="cam-icon" data-show="camera" data-act="flip" aria-label="Virar câmara"><%- include('partials/icon', { name: 'flip' }) %></button>
     <button type="button" class="btn cam-publish" data-show="edit" data-act="publish">Publicar momento <%- include('partials/icon', { name: 'arrow' }) %></button>
   </div>

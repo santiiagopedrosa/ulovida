@@ -188,6 +188,12 @@ const migrations = [
   ['stories', 'music_x', 'REAL NOT NULL DEFAULT 0.5'],
   ['stories', 'music_y', 'REAL NOT NULL DEFAULT 0.82'],
   ['stories', 'music_hidden', 'INTEGER NOT NULL DEFAULT 0'],
+  // Momentos em vídeo: imagem de capa (para a barra de momentos e respostas).
+  ['stories', 'poster_id', 'INTEGER'],
+  // GIFs (GIPHY) nas bocas e nos comentários; imagem/GIF enviado nos comentários.
+  ['posts', 'gif_url', 'TEXT'],
+  ['comments', 'gif_url', 'TEXT'],
+  ['comments', 'image_id', 'INTEGER'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

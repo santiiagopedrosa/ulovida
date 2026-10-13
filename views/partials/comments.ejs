@@ -9,14 +9,30 @@
             <form method="post" action="/comentarios/<%= c.id %>/apagar" class="inline"><button class="linkbtn small" aria-label="Apagar comentário">Apagar</button></form>
           <% } %>
         </div>
-        <p><%= c.body %></p>
+        <% if (c.body) { %><p><%= c.body %></p><% } %>
+        <% if (c.gif_url) { %><img class="comment-media" src="<%= c.gif_url %>" alt="GIF" loading="lazy"><% } %>
+        <% if (c.image_id) { %><img class="comment-media" src="/img/<%= c.image_id %>" alt="" loading="lazy"><% } %>
       </div>
     </article>
   <% } %>
   <% if (!comments.length) { %><p class="muted small">Ainda sem comentários. Sê o primeiro.</p><% } %>
-  <form method="post" action="<%= action %>" class="comment-form">
-    <%- include('avatar', { u: me }) %>
-    <textarea name="body" rows="1" maxlength="<%= max %>" placeholder="Comentar…" aria-label="Comentário" required></textarea>
-    <button class="btn small">Comentar</button>
+  <form method="post" action="<%= action %>" class="comment-form" enctype="multipart/form-data">
+    <input type="hidden" name="gif_url">
+    <div class="media-preview comment-preview" hidden>
+      <img id="comment-preview" alt="">
+      <button type="button" class="media-del" aria-label="Tirar foto ou GIF"><%- include('icon', { name: 'x' }) %></button>
+    </div>
+    <div class="comment-row">
+      <%- include('avatar', { u: me }) %>
+      <textarea name="body" rows="1" maxlength="<%= max %>" placeholder="Comentar…" aria-label="Comentário"></textarea>
+      <label class="icon-btn file-btn comment-tool" title="Foto ou GIF do telemóvel" aria-label="Juntar foto ou GIF">
+        <%- include('icon', { name: 'image' }) %>
+        <input type="file" name="photo" accept="image/*" data-max="1200" data-aspects="1/1,4/5,16/9" data-preview="comment-preview">
+      </label>
+      <% if (gifsEnabled) { %><button type="button" class="gif-btn" data-gif-picker aria-label="Escolher GIF">GIF</button><% } %>
+      <button class="btn small">Comentar</button>
+    </div>
   </form>
+  <script src="/upload.js" defer></script>
+  <script src="/gifs.js" defer></script>
 </section>
