@@ -1,7 +1,8 @@
 <%- include('partials/header') %>
 <section class="hero">
   <p class="eyebrow">Exclusivo para a comunidade ULO</p>
-  <h1>A vida académica, toda num sítio.</h1>
+  <% let i = 0; const words = (t) => t.split(' ').map((w) => `<span style="--i:${i++}">${w}</span>`).join(' '); %>
+  <h1 class="blur-text" aria-label="A vida académica, toda num sítio."><span aria-hidden="true"><%- words('A vida académica,') %> <em><%- words('toda num sítio.') %></em></span></h1>
   <p class="lead">Encontra colegas, descobre convívios e prés, e vê quem vai. Só entra quem tem email <strong>@ulo.pt</strong>.</p>
   <div class="row">
     <a class="btn" href="/registar">Criar conta <%- include('partials/icon', { name: 'arrow' }) %></a>

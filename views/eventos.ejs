@@ -9,9 +9,9 @@
 <% if (created) { %><div class="notice" role="status"><%- include('partials/icon', { name: 'check' }) %><span>Pedido enviado! O evento aparece aqui assim que for aprovado.</span></div><% } %>
 
 <nav class="tabs" aria-label="Filtrar eventos">
-  <a href="/eventos" class="<%= tipo === '' ? 'on' : '' %>">Todos</a>
-  <a href="/eventos?tipo=convivio" class="<%= tipo === 'convivio' ? 'on' : '' %>">Convívios</a>
-  <a href="/eventos?tipo=pre" class="<%= tipo === 'pre' ? 'on' : '' %>">Prés</a>
+  <% for (const [t, label] of [['', 'Todos'], ['convivio', 'Convívios'], ['pre', 'Prés']]) { %>
+    <a href="/eventos<%= t ? '?tipo=' + t : '' %>" class="<%= tipo === t ? 'on' : '' %>"><%= label %><% if (tipo === t) { %><i class="tab-line" aria-hidden="true"></i><% } %></a>
+  <% } %>
 </nav>
 
 <div class="list">

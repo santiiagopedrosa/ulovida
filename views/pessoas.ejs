@@ -12,7 +12,7 @@
 <div class="grid">
   <% for (const p of people) { %>
     <a class="person" href="/u/<%= p.id %>">
-      <%- include('partials/avatar', { u: p }) %>
+      <%- include('partials/avatar', { u: p, vt: true }) %>
       <div>
         <strong><%= p.name %></strong>
         <div class="muted small"><%= [p.course, p.year].filter(Boolean).join(' · ') %></div>

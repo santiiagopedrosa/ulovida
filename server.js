@@ -45,9 +45,11 @@ function getCookie(req, name) {
   }
 }
 // Hora de Portugal em "YYYY-MM-DDTHH:MM" (na Vercel o servidor está em UTC).
-function nowLocal() {
-  return new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Lisbon' }).replace(' ', 'T').slice(0, 16);
+function nowLocal(date = new Date()) {
+  return date.toLocaleString('sv-SE', { timeZone: 'Europe/Lisbon' }).replace(' ', 'T').slice(0, 16);
 }
+// Os eventos de um dia continuam visíveis até às 6:00 do dia seguinte (prés e convívios acabam tarde).
+const eventsCutoff = () => nowLocal(new Date(Date.now() - 6 * 3_600_000)).slice(0, 10);
 const dateFmt = new Intl.DateTimeFormat('pt-PT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const fmtDate = (s) => dateFmt.format(new Date(s));
 // Partes da data para o bloco de data dos eventos.
@@ -240,7 +242,7 @@ app.get('/pessoas', requireAuth, async (req, res) => {
 app.get('/u/:id', requireAuth, async (req, res) => {
   const user = await db.get('SELECT * FROM users WHERE id = ?', req.params.id);
   if (!user) return res.status(404).render('message', { title: 'Não encontrado', heading: 'Perfil não encontrado', text: '' });
-  const today = nowLocal().slice(0, 10);
+  const today = eventsCutoff();
   const going = await db.all(`SELECT e.* FROM events e JOIN event_attendees a ON a.event_id = e.id
               WHERE a.user_id = ? AND e.status = 'approved' AND e.starts_at >= ? ORDER BY e.starts_at`, user.id, today);
   const created = await db.all(`SELECT * FROM events WHERE creator_id = ? AND status = 'approved' ORDER BY starts_at DESC LIMIT 10`, user.id);
@@ -288,7 +290,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
                 EXISTS (SELECT 1 FROM event_attendees a WHERE a.event_id = e.id AND a.user_id = ?) AS im_going
               FROM events e JOIN users u ON u.id = e.creator_id
               WHERE e.status = 'approved' AND e.starts_at >= ? AND (? = '' OR e.type = ?)
-              ORDER BY e.starts_at`, req.me.id, nowLocal().slice(0, 10), tipo, tipo);
+              ORDER BY e.starts_at`, req.me.id, eventsCutoff(), tipo, tipo);
   await Promise.all(events.map(async (e) => {
     e.attendees = await db.all(`SELECT u.id, u.name, u.photo_id FROM event_attendees a JOIN users u ON u.id = a.user_id WHERE a.event_id = ? LIMIT 8`, e.id);
   }));

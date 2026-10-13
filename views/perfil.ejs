@@ -1,6 +1,6 @@
 <%- include('partials/header') %>
 <section class="profile">
-  <%- include('partials/avatar', { u: user, big: true }) %>
+  <%- include('partials/avatar', { u: user, big: true, vt: true }) %>
   <div class="profile-main">
     <h1><%= user.name %></h1>
     <p class="muted"><%= [user.course, user.year].filter(Boolean).join(' · ') %></p>
