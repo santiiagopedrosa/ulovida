@@ -48,6 +48,12 @@ function nowLocal() {
 }
 const dateFmt = new Intl.DateTimeFormat('pt-PT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const fmtDate = (s) => dateFmt.format(new Date(s));
+// Partes da data para o bloco de data dos eventos.
+const fmtParts = (s) => {
+  const d = new Date(s);
+  const f = (o) => new Intl.DateTimeFormat('pt-PT', o).format(d).replace('.', '');
+  return { day: f({ day: 'numeric' }), month: f({ month: 'short' }), weekday: f({ weekday: 'short' }).slice(0, 3), time: f({ hour: '2-digit', minute: '2-digit' }) };
+};
 
 async function startSession(res, userId) {
   const token = newToken();
@@ -105,7 +111,8 @@ app.use(async (req, res, next) => {
   Object.assign(res.locals, {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
-    PRAXE, RELACAO, ANOS, TIPOS, fmtDate,
+    PRAXE, RELACAO, ANOS, TIPOS, fmtDate, fmtParts,
+    path: req.path,
     error: null,
   });
   next();
@@ -135,7 +142,7 @@ app.post('/registar', async (req, res) => {
   }
   res.render('message', {
     title: 'Verifica o teu email',
-    heading: 'Verifica o teu email 📬',
+    heading: 'Verifica o teu email',
     text: `Se ${email} ainda não tem conta, enviámos um link de confirmação. O link é válido durante 1 hora — vê também o spam.`,
   });
 });

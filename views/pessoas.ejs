@@ -1,22 +1,30 @@
 <%- include('partials/header') %>
 <div class="pagehead">
-  <h1>Pessoas</h1>
-  <form method="get" class="search"><input name="q" value="<%= q %>" placeholder="Procurar por nome ou curso"></form>
+  <div>
+    <h1>Pessoas</h1>
+    <p class="muted"><%= people.length %> <%= people.length === 1 ? 'pessoa' : 'pessoas' %><%= q ? ` para “${q}”` : '' %></p>
+  </div>
+  <form method="get" class="search" role="search">
+    <%- include('partials/icon', { name: 'search' }) %>
+    <input name="q" value="<%= q %>" placeholder="Procurar por nome ou curso" aria-label="Procurar pessoas">
+  </form>
 </div>
 <div class="grid">
   <% for (const p of people) { %>
-    <a class="card person" href="/u/<%= p.id %>">
+    <a class="person" href="/u/<%= p.id %>">
       <%- include('partials/avatar', { u: p }) %>
       <div>
         <strong><%= p.name %></strong>
-        <div class="muted small"><%= p.course %> · <%= p.year %></div>
+        <div class="muted small"><%= [p.course, p.year].filter(Boolean).join(' · ') %></div>
+        <% if (p.praxe || p.relationship) { %>
         <div class="tags">
           <% if (p.praxe) { %><span class="tag"><%= PRAXE[p.praxe] %></span><% } %>
           <% if (p.relationship) { %><span class="tag"><%= RELACAO[p.relationship] %></span><% } %>
         </div>
+        <% } %>
       </div>
     </a>
   <% } %>
-  <% if (!people.length) { %><p class="muted">Ninguém encontrado.</p><% } %>
 </div>
+<% if (!people.length) { %><p class="empty">Ninguém encontrado.</p><% } %>
 <%- include('partials/footer') %>

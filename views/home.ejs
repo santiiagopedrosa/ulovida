@@ -1,11 +1,16 @@
 <%- include('partials/header') %>
 <section class="hero">
-  <p class="eyebrow">Exclusivo para a ULO</p>
-  <h1>A vida académica,<br>toda num sítio.</h1>
-  <p class="lead">Perfis, praxe, convívios e prés. Só entra quem tem email <strong>@ulo.pt</strong>.</p>
+  <p class="eyebrow">Exclusivo para a comunidade ULO</p>
+  <h1>A vida académica, toda num sítio.</h1>
+  <p class="lead">Encontra colegas, descobre convívios e prés, e vê quem vai. Só entra quem tem email <strong>@ulo.pt</strong>.</p>
   <div class="row">
-    <a class="btn" href="/registar">Criar conta</a>
+    <a class="btn" href="/registar">Criar conta <%- include('partials/icon', { name: 'arrow' }) %></a>
     <a class="btn ghost" href="/entrar">Já tenho conta</a>
   </div>
+</section>
+<section class="features">
+  <div><strong>Eventos</strong><p class="muted small">Convívios e prés aprovados, com quem vai a cada um.</p></div>
+  <div><strong>Pessoas</strong><p class="muted small">Procura colegas por nome ou curso.</p></div>
+  <div><strong>Só ULO</strong><p class="muted small">Cada conta é confirmada com o email institucional.</p></div>
 </section>
 <%- include('partials/footer') %>

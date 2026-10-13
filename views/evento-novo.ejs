@@ -1,17 +1,17 @@
 <%- include('partials/header') %>
-<section class="card narrow">
+<section class="panel">
   <h1>Novo evento</h1>
-  <% if (!me.is_admin) { %><p class="muted">O evento só fica visível depois de ser aprovado pelo admin.</p><% } %>
+  <p class="muted"><%= me.is_admin ? 'Como admin, o evento é publicado logo.' : 'O evento só fica visível depois de ser aprovado pelo admin.' %></p>
   <form method="post" action="/eventos/novo" class="form">
-    <div class="seg">
+    <div class="seg" role="radiogroup" aria-label="Tipo de evento">
       <label><input type="radio" name="type" value="convivio" <%= form.type === 'convivio' ? 'checked' : '' %>> Convívio</label>
       <label><input type="radio" name="type" value="pre" <%= form.type === 'pre' ? 'checked' : '' %>> Pré</label>
     </div>
     <label>Nome <input name="title" value="<%= form.title || '' %>" maxlength="80" placeholder="ex: Pré antes da Queima" required></label>
     <label>Local <input name="location" value="<%= form.location || '' %>" maxlength="120" required></label>
     <label>Data e hora <input type="datetime-local" name="starts_at" value="<%= form.starts_at || '' %>" min="<%= min %>" required></label>
-    <label>Descrição <textarea name="description" rows="4" maxlength="1000" placeholder="O que levar, preço, dress code…"><%= form.description || '' %></textarea></label>
-    <button class="btn"><%= me.is_admin ? 'Publicar' : 'Enviar para aprovação' %></button>
+    <label>Descrição <span class="hint">Opcional — o que levar, preço, dress code…</span><textarea name="description" rows="4" maxlength="1000"><%= form.description || '' %></textarea></label>
+    <button class="btn block"><%= me.is_admin ? 'Publicar' : 'Enviar para aprovação' %></button>
   </form>
 </section>
 <%- include('partials/footer') %>

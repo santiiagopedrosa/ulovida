@@ -1,33 +1,45 @@
 <%- include('partials/header') %>
 <div class="pagehead">
-  <h1>Admin</h1>
-  <span class="muted"><%= userCount %> pessoas registadas</span>
+  <div>
+    <h1>Admin</h1>
+    <p class="muted"><%= userCount %> <%= userCount === 1 ? 'pessoa registada' : 'pessoas registadas' %></p>
+  </div>
 </div>
 
-<h2>Pedidos pendentes (<%= pending.length %>)</h2>
+<h2>Pedidos pendentes · <%= pending.length %></h2>
+<div class="list">
 <% for (const e of pending) { %>
-  <article class="card event">
-    <div class="event-date"><%= fmtDate(e.starts_at) %></div>
-    <div class="event-body">
-      <span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span>
-      <h3><%= e.title %></h3>
-      <p class="muted small">📍 <%= e.location %> · por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a> (<%= e.creator_email %>)</p>
-      <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
-      <div class="row">
-        <form method="post" action="/admin/eventos/<%= e.id %>/aprovar"><button class="btn small">Aprovar</button></form>
+  <article class="event">
+      <% const d = fmtParts(e.starts_at); %>
+      <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
+      <div class="event-body">
+        <span class="type <%= e.type %>"><%= TIPOS[e.type] %></span>
+        <h3><%= e.title %></h3>
+        <div class="meta">
+          <span><%- include('partials/icon', { name: 'clock' }) %> <%= d.time %></span>
+          <span><%- include('partials/icon', { name: 'pin' }) %> <%= e.location %></span>
+          <span>por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a><%- true ? ` <span class="muted">(${e.creator_email})</span>` : '' %></span>
+        </div>
+        <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
+      <div class="row" style="margin-top:16px">
+        <form method="post" action="/admin/eventos/<%= e.id %>/aprovar"><button class="btn small"><%- include('partials/icon', { name: 'check' }) %> Aprovar</button></form>
         <form method="post" action="/admin/eventos/<%= e.id %>/rejeitar"><button class="btn small danger">Rejeitar</button></form>
       </div>
     </div>
   </article>
 <% } %>
-<% if (!pending.length) { %><p class="muted">Nada para aprovar. 👌</p><% } %>
+<% if (!pending.length) { %><p class="empty">Nada para aprovar.</p><% } %>
+</div>
 
 <h2>Aprovados</h2>
+<div class="list">
 <% for (const e of recent) { %>
   <div class="mini">
-    <span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span> <strong><%= e.title %></strong>
-    <span class="muted small"><%= fmtDate(e.starts_at) %> · <%= e.creator_name %></span>
+    <span class="type <%= e.type %>" style="margin:0"><%= TIPOS[e.type] %></span>
+    <span class="grow"><strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %> · <%= e.creator_name %></span></span>
     <form method="post" action="/admin/eventos/<%= e.id %>/rejeitar" class="inline"><button class="linkbtn small">Remover</button></form>
   </div>
 <% } %>
+<% if (!recent.length) { %><p class="empty">Ainda nenhum.</p><% } %>
+</div>
 <%- include('partials/footer') %>

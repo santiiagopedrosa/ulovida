@@ -1,25 +1,25 @@
 <%- include('partials/header') %>
-<section class="card narrow">
-  <h1>Email confirmado ✅</h1>
+<section class="panel">
+  <h1>Email confirmado</h1>
   <p class="muted">Falta pouco. Completa os teus dados para <strong><%= email %></strong>.</p>
   <form method="post" action="/verificar" class="form">
     <input type="hidden" name="token" value="<%= token %>">
     <label>Nome
-      <input name="name" value="<%= form.name || '' %>" maxlength="60" required>
+      <input name="name" value="<%= form.name || '' %>" maxlength="60" autocomplete="name" required>
     </label>
     <label>Curso
       <input name="course" value="<%= form.course || '' %>" maxlength="80" placeholder="ex: Engenharia Informática" required>
     </label>
     <label>Ano
       <select name="year" required>
-        <option value="">—</option>
+        <option value="">Escolher…</option>
         <% for (const a of ANOS) { %><option <%= form.year === a ? 'selected' : '' %>><%= a %></option><% } %>
       </select>
     </label>
-    <label>Password
+    <label>Password <span class="hint">Pelo menos 8 caracteres</span>
       <input type="password" name="password" minlength="8" autocomplete="new-password" required>
     </label>
-    <button class="btn">Criar conta</button>
+    <button class="btn block">Criar conta</button>
   </form>
 </section>
 <%- include('partials/footer') %>
