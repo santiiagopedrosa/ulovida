@@ -373,7 +373,14 @@ app.get('/eventos', requireAuth, async (req, res) => {
                                 LEFT JOIN story_views v ON v.story_id = s.id AND v.user_id = ${me}
                                 WHERE s.expires_at > ? AND (s.user_id = ${me} OR s.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ${me}))
                                 GROUP BY u.id ORDER BY u.id = ${me} DESC, unseen > 0 DESC, last DESC`, Date.now());
-  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, created: req.query.criado === '1' });
+  // Sugestões de quem seguir: primeiro do mesmo curso, depois da mesma escola, depois quem tem mais seguidores.
+  const suggestions = await db.all(`SELECT u.id, u.name, u.school, u.course, u.photo_id,
+      (SELECT COUNT(*) FROM follows f WHERE f.followee_id = u.id) AS followers
+    FROM users u
+    WHERE u.id != ${me} AND u.id NOT IN (SELECT followee_id FROM follows WHERE follower_id = ${me})
+    ORDER BY (u.course = ? AND u.course != '') DESC, (u.school = ? AND u.school != '') DESC, followers DESC, u.id DESC
+    LIMIT 5`, req.me.course || '', req.me.school || '');
+  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, suggestions, created: req.query.criado === '1' });
 });
 
 // Pessoas que podem ser convidadas para um evento privado: quem eu sigo e quem me segue.
@@ -457,7 +464,8 @@ app.post('/u/:id/seguir', requireAuth, async (req, res) => {
     const del = await db.run('DELETE FROM follows WHERE follower_id = ? AND followee_id = ?', req.me.id, user.id);
     if (!del.changes) await db.run('INSERT INTO follows (follower_id, followee_id, created_at) VALUES (?, ?, ?)', req.me.id, user.id, Date.now());
   }
-  res.redirect(`/u/${req.params.id}`);
+  const back = String(req.body.voltar || '');
+  res.redirect(back.startsWith('/') && !back.startsWith('//') ? back : `/u/${req.params.id}`);
 });
 
 for (const [route, label, sql] of [
@@ -554,9 +562,9 @@ app.post('/stories/:id/apagar', requireAuth, async (req, res) => {
 });
 
 // ---------- mensagens ----------
-app.get('/mensagens', requireAuth, async (req, res) => {
-  const me = Number(req.me.id);
-  const conversations = await db.all(`
+function conversationsOf(meId) {
+  const me = Number(meId);
+  return db.all(`
     WITH c AS (
       SELECT CASE WHEN sender_id = ${me} THEN recipient_id ELSE sender_id END AS other_id, MAX(id) AS last_id
       FROM messages WHERE sender_id = ${me} OR recipient_id = ${me} GROUP BY other_id
@@ -565,7 +573,10 @@ app.get('/mensagens', requireAuth, async (req, res) => {
       (SELECT COUNT(*) FROM messages x WHERE x.sender_id = c.other_id AND x.recipient_id = ${me} AND x.read_at IS NULL) AS unread
     FROM c JOIN messages m ON m.id = c.last_id JOIN users u ON u.id = c.other_id
     ORDER BY c.last_id DESC LIMIT 50`);
-  res.render('mensagens', { title: 'Mensagens', conversations });
+}
+
+app.get('/mensagens', requireAuth, async (req, res) => {
+  res.render('mensagens', { title: 'Mensagens', conversations: await conversationsOf(req.me.id) });
 });
 
 const messagesBetween = (a, b, afterId = 0) => db.all(`SELECT id, sender_id, body, created_at FROM messages
@@ -581,7 +592,7 @@ app.get('/mensagens/:id', requireAuth, async (req, res) => {
   const messages = await messagesBetween(req.me.id, other.id);
   await markRead(req.me.id, other.id);
   res.locals.unreadCount = (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n;
-  res.render('conversa', { title: other.name, other, messages });
+  res.render('conversa', { title: other.name, other, messages, conversations: await conversationsOf(req.me.id) });
 });
 
 // Usado pela página da conversa para ir buscar mensagens novas a cada poucos segundos.

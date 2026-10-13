@@ -6,6 +6,8 @@
   </div>
   <a class="btn" href="/eventos/novo"><%- include('partials/icon', { name: 'plus' }) %> Criar evento</a>
 </div>
+<div class="feed">
+<div class="feed-main">
 <div class="stories-bar" aria-label="Stories">
   <% const mineHas = stories.length && stories[0].id === me.id; %>
   <% if (!mineHas) { %>
@@ -69,21 +71,35 @@
   <% } %>
   <% if (!events.length) { %><p class="empty">Ainda não há eventos marcados. <a href="/eventos/novo">Cria o primeiro</a>.</p><% } %>
 </div>
-
-<% if (mine.length) { %>
-  <h2>Os teus pedidos</h2>
-  <div class="list">
-  <% for (const e of mine) { %>
-    <div class="mini">
-      <span class="status <%= e.status %>"><%= e.status === 'pending' ? 'Pendente' : 'Rejeitado' %></span>
-      <span class="grow"><strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %></span></span>
-      <% if (e.status === 'pending') { %>
-        <form method="post" action="/eventos/<%= e.id %>/cancelar" class="inline"><button class="linkbtn small">Cancelar</button></form>
-      <% } else { %>
-        <form method="post" action="/eventos/<%= e.id %>/fechar" class="inline"><button class="icon-btn" title="Fechar" aria-label="Fechar aviso de <%= e.title %>"><%- include('partials/icon', { name: 'x' }) %></button></form>
-      <% } %>
+</div>
+<aside class="feed-side">
+  <section class="side-card">
+    <h2>Sugestões para ti</h2>
+    <% for (const p of suggestions) { %>
+      <div class="suggest">
+        <a href="/u/<%= p.id %>" class="suggest-user"><%- include('partials/avatar', { u: p }) %><span><strong><%= p.name %></strong><span class="muted small"><%= [p.school, p.course].filter(Boolean).join(' · ') || 'ULO' %></span></span></a>
+        <form method="post" action="/u/<%= p.id %>/seguir"><input type="hidden" name="voltar" value="/eventos"><button class="btn small">Seguir</button></form>
+      </div>
+    <% } %>
+    <% if (!suggestions.length) { %><p class="muted small">Já segues toda a gente.</p><% } %>
+    <a class="side-link" href="/pessoas">Ver todas as pessoas →</a>
+  </section>
+  <% if (mine.length) { %>
+    <h2>Os teus pedidos</h2>
+    <div class="list">
+    <% for (const e of mine) { %>
+      <div class="mini">
+        <span class="status <%= e.status %>"><%= e.status === 'pending' ? 'Pendente' : 'Rejeitado' %></span>
+        <span class="grow"><strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %></span></span>
+        <% if (e.status === 'pending') { %>
+          <form method="post" action="/eventos/<%= e.id %>/cancelar" class="inline"><button class="linkbtn small">Cancelar</button></form>
+        <% } else { %>
+          <form method="post" action="/eventos/<%= e.id %>/fechar" class="inline"><button class="icon-btn" title="Fechar" aria-label="Fechar aviso de <%= e.title %>"><%- include('partials/icon', { name: 'x' }) %></button></form>
+        <% } %>
+      </div>
+    <% } %>
     </div>
   <% } %>
-  </div>
-<% } %>
+</aside>
+</div>
 <%- include('partials/footer') %>

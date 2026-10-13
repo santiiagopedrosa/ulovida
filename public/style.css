@@ -547,6 +547,73 @@ fieldset.vis { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; justif
 .invite .avatar { width: 32px; height: 32px; font-size: .7rem; border: 0; }
 .invite > span { display: grid; color: var(--ink); }
 
+/* ---------- coluna lateral de eventos ---------- */
+.feed-side { margin-top: 40px; display: grid; gap: 28px; align-content: start; }
+.feed-side h2 { margin-top: 0; }
+.side-card { display: grid; gap: 4px; }
+.suggest { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; }
+.suggest-user { display: flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; color: inherit; }
+.suggest-user > span { display: grid; min-width: 0; line-height: 1.3; }
+.suggest-user strong { font-weight: 600; }
+.suggest-user .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggest form { margin: 0; flex: none; }
+.side-link { margin-top: 6px; font-weight: 600; font-size: .9rem; color: var(--accent-text); text-decoration: none; }
+.side-link:hover { text-decoration: underline; }
+
+/* ---------- mensagens em dois painéis ---------- */
+.dm-empty { display: none; }
+.dm.in-chat .dm-list { display: none; }
+
+/* ---------- computador ---------- */
+@media (min-width: 1024px) {
+  .wrap { max-width: 1160px; padding: 0 40px; }
+  body:has(.dock) .wrap { padding-left: 120px; }
+  body:has(.dock) main.wrap { padding-bottom: 64px; }
+
+  /* Ilha vertical à esquerda */
+  .dock { left: 20px; right: auto; top: 50%; bottom: auto; translate: 0 -50%; margin: 0; flex-direction: column; gap: 4px; padding: 8px; }
+  .dock a { height: 48px; width: 48px; min-width: 0; padding: 0; }
+  .dock a.on { padding: 0; }
+  .dock-label { display: none; }
+  .dock a.create { margin: 4px 0; }
+  .dock .badge { top: -6px; right: -8px; }
+  /* Nome do item ao passar o rato */
+  .dock a::after {
+    content: attr(data-label); position: absolute; left: calc(100% + 14px); top: 50%; translate: -6px -50%;
+    padding: 6px 10px; border-radius: 8px; background: var(--black); color: #fff; font: 700 .8rem var(--font-display);
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .15s, translate .15s var(--ease);
+  }
+  .dock a:hover::after, .dock a:focus-visible::after { opacity: 1; translate: 0 -50%; }
+
+  /* Eventos: lista + coluna lateral */
+  .feed { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 56px; align-items: start; }
+  .feed-side { margin-top: 0; position: sticky; top: 24px; padding: 22px; background: var(--surface); }
+  .pagehead { margin-bottom: 32px; }
+
+  /* Pessoas: mais colunas */
+  .grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0 32px; }
+
+  /* Mensagens: lista à esquerda, conversa à direita */
+  .dm { display: grid; grid-template-columns: 340px minmax(0, 1fr); height: calc(100dvh - 60px - 120px); min-height: 480px; border: 1px solid var(--line); background: var(--card); }
+  .dm .dm-list, .dm.in-chat .dm-list { display: block; overflow-y: auto; border-right: 1px solid var(--line); }
+  .dm .convo-list { border-top: 0; }
+  .dm .convo { padding: 12px 16px; }
+  .dm .convo.active { background: var(--surface); }
+  .dm .convo:hover { background: var(--surface); }
+  .dm .empty { border: 0; padding: 40px 20px; }
+  .dm .chat { height: auto; min-height: 0; border: 0; border-radius: 0; }
+  .dm .chat-head .icon-btn { display: none; }
+  .dm-empty { display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; padding: 40px; }
+  .dm-empty-icon { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--yellow); color: var(--green-900); margin-bottom: 8px; }
+  .dm-empty-icon .icon { width: 32px; height: 32px; }
+  .dm-empty strong { font: 900 1.4rem var(--font-display); }
+
+  /* Página inicial mais larga */
+  .hero { padding: 72px 64px 56px; }
+  .features div { min-height: 220px; padding: 32px; }
+}
+@media (max-width: 1023px) { .dock.in-chat { display: none; } }
+
 /* ---------- animações ---------- */
 /* Passagem suave entre páginas (Chrome, Edge e Safari recentes; nos outros a página muda normalmente). */
 @view-transition { navigation: auto; }
