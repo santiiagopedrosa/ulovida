@@ -2,7 +2,7 @@
 <section class="panel">
   <h1>Novo evento</h1>
   <p class="muted"><%= me.is_admin ? 'Como admin, o evento é publicado logo.' : 'O evento só fica visível depois de ser aprovado pelo admin.' %></p>
-  <form method="post" action="/eventos/novo" class="form">
+  <form method="post" action="/eventos/novo" class="form" enctype="multipart/form-data">
     <div class="seg" role="radiogroup" aria-label="Tipo de evento">
       <label><input type="radio" name="type" value="convivio" <%= form.type === 'convivio' ? 'checked' : '' %>> Convívio</label>
       <label><input type="radio" name="type" value="pre" <%= form.type === 'pre' ? 'checked' : '' %>> Pré</label>
@@ -11,7 +11,16 @@
     <label>Local <input name="location" value="<%= form.location || '' %>" maxlength="120" required></label>
     <label>Data e hora <input type="datetime-local" name="starts_at" value="<%= form.starts_at || '' %>" min="<%= min %>" required></label>
     <label>Descrição <span class="hint">Opcional — o que levar, preço, dress code…</span><textarea name="description" rows="4" maxlength="1000"><%= form.description || '' %></textarea></label>
+    <div class="field">
+      <span class="field-label">Foto <span class="hint">Opcional — um cartaz ou foto do sítio</span></span>
+      <img id="event-preview" class="event-photo" alt="" hidden>
+      <label class="btn ghost small file-btn">
+        <%- include('partials/icon', { name: 'image' }) %> Escolher foto
+        <input type="file" name="photo" accept="image/*" data-max="1600" data-aspect="16/9" data-preview="event-preview">
+      </label>
+    </div>
     <button class="btn block"><%= me.is_admin ? 'Publicar' : 'Enviar para aprovação' %></button>
   </form>
 </section>
+<script src="/upload.js" defer></script>
 <%- include('partials/footer') %>

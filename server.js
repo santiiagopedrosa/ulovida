@@ -1,6 +1,8 @@
 import express from 'express';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import multer from 'multer';
+import sharp from 'sharp';
 import { db } from './db.js';
 import { sendVerificationEmail } from './mail.js';
 
@@ -119,6 +121,27 @@ app.use(async (req, res, next) => {
 });
 
 const requireAuth = (req, res, next) => (req.me ? next() : res.redirect('/entrar'));
+// ---------- fotos ----------
+// Até 4 MB por pedido (a Vercel recusa corpos acima de 4,5 MB); o browser já reduz a foto antes de enviar.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024, files: 1 } });
+const photoUpload = (req, res, next) =>
+  upload.single('photo')(req, res, (err) => {
+    if (err) req.uploadError = err.code === 'LIMIT_FILE_SIZE' ? 'A foto é demasiado grande (máximo 4 MB).' : 'Não foi possível receber a foto.';
+    next();
+  });
+
+// Reduz, roda segundo o EXIF e converte para WebP (o que também apaga metadados como a localização GPS).
+async function saveImage(file, kind) {
+  const img = sharp(file.buffer).rotate();
+  const sized = kind === 'avatar'
+    ? img.resize(400, 400, { fit: 'cover' })
+    : img.resize(1600, 1600, { fit: 'inside', withoutEnlargement: true });
+  const data = await sized.webp({ quality: 80 }).toBuffer();
+  const { lastInsertRowid } = await db.run('INSERT INTO images (data, mime) VALUES (?, ?)', data, 'image/webp');
+  return lastInsertRowid;
+}
+const deleteImage = (id) => id && db.run('DELETE FROM images WHERE id = ?', id);
+
 const requireAdmin = (req, res, next) => (req.me?.is_admin ? next() : res.status(403).render('message', { title: 'Sem acesso', heading: 'Sem acesso', text: 'Esta página é só para o administrador.' }));
 
 // ---------- público: registo e login ----------
@@ -198,10 +221,18 @@ app.post('/sair', async (req, res) => {
 });
 
 // ---------- pessoas e perfis ----------
+// As fotos só são visíveis para quem tem sessão; o id nunca muda de conteúdo, por isso pode ficar em cache.
+app.get('/img/:id', requireAuth, async (req, res) => {
+  const img = await db.get('SELECT data, mime FROM images WHERE id = ?', req.params.id);
+  if (!img) return res.status(404).end();
+  res.set({ 'Content-Type': img.mime, 'Cache-Control': 'private, max-age=31536000, immutable' });
+  res.send(Buffer.from(img.data));
+});
+
 app.get('/pessoas', requireAuth, async (req, res) => {
   const q = str(req.query.q, 60);
   const like = `%${q}%`;
-  const people = await db.all(`SELECT id, name, course, year, praxe, relationship FROM users
+  const people = await db.all(`SELECT id, name, course, year, praxe, relationship, photo_id FROM users
               WHERE name LIKE ? OR course LIKE ? ORDER BY name COLLATE NOCASE`, like, like);
   res.render('pessoas', { title: 'Pessoas', people, q });
 });
@@ -220,7 +251,7 @@ app.get('/perfil/editar', requireAuth, (req, res) => {
   res.render('editar-perfil', { title: 'Editar perfil', form: req.me, novo: req.query.novo === '1' });
 });
 
-app.post('/perfil/editar', requireAuth, async (req, res) => {
+app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
   const form = {
     name: str(req.body.name, 60),
     course: str(req.body.course, 80),
@@ -229,6 +260,7 @@ app.post('/perfil/editar', requireAuth, async (req, res) => {
     praxe: str(req.body.praxe, 20),
     relationship: str(req.body.relationship, 20),
     instagram: str(req.body.instagram, 31).replace(/^@/, ''),
+    photo_id: req.me.photo_id,
   };
   const fail = (error) => res.status(400).render('editar-perfil', { title: 'Editar perfil', form, novo: false, error });
   if (form.name.length < 2) return fail('Escreve o teu nome.');
@@ -236,9 +268,15 @@ app.post('/perfil/editar', requireAuth, async (req, res) => {
   if (form.praxe && !PRAXE[form.praxe]) return fail('Opção de praxe inválida.');
   if (form.relationship && !RELACAO[form.relationship]) return fail('Opção de relação inválida.');
   if (form.instagram && !/^[A-Za-z0-9._]{1,30}$/.test(form.instagram)) return fail('Instagram inválido.');
+  if (req.uploadError) return fail(req.uploadError);
 
-  await db.run(`UPDATE users SET name = ?, course = ?, year = ?, bio = ?, praxe = ?, relationship = ?, instagram = ? WHERE id = ?`,
-    form.name, form.course, form.year, form.bio, form.praxe, form.relationship, form.instagram, req.me.id);
+  let photoId = req.body.remove_photo === '1' ? null : req.me.photo_id;
+  if (req.file) {
+    try { photoId = await saveImage(req.file, 'avatar'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
+  }
+  await db.run(`UPDATE users SET name = ?, course = ?, year = ?, bio = ?, praxe = ?, relationship = ?, instagram = ?, photo_id = ? WHERE id = ?`,
+    form.name, form.course, form.year, form.bio, form.praxe, form.relationship, form.instagram, photoId, req.me.id);
+  if (photoId !== req.me.photo_id) await deleteImage(req.me.photo_id);
   res.redirect(`/u/${req.me.id}`);
 });
 
@@ -252,7 +290,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
               WHERE e.status = 'approved' AND e.starts_at >= ? AND (? = '' OR e.type = ?)
               ORDER BY e.starts_at`, req.me.id, nowLocal().slice(0, 10), tipo, tipo);
   await Promise.all(events.map(async (e) => {
-    e.attendees = await db.all(`SELECT u.id, u.name FROM event_attendees a JOIN users u ON u.id = a.user_id WHERE a.event_id = ? LIMIT 8`, e.id);
+    e.attendees = await db.all(`SELECT u.id, u.name, u.photo_id FROM event_attendees a JOIN users u ON u.id = a.user_id WHERE a.event_id = ? LIMIT 8`, e.id);
   }));
   const mine = await db.all(`SELECT * FROM events WHERE creator_id = ? AND status != 'approved' ORDER BY created_at DESC LIMIT 10`, req.me.id);
   res.render('eventos', { title: 'Eventos', events, mine, tipo, created: req.query.criado === '1' });
@@ -262,7 +300,7 @@ app.get('/eventos/novo', requireAuth, (req, res) => {
   res.render('evento-novo', { title: 'Novo evento', form: { type: req.query.tipo === 'pre' ? 'pre' : 'convivio' }, min: nowLocal() });
 });
 
-app.post('/eventos/novo', requireAuth, async (req, res) => {
+app.post('/eventos/novo', requireAuth, photoUpload, async (req, res) => {
   const form = {
     type: str(req.body.type, 10),
     title: str(req.body.title, 80),
@@ -276,10 +314,15 @@ app.post('/eventos/novo', requireAuth, async (req, res) => {
   if (!form.location) return fail('Indica o local.');
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(form.starts_at) || isNaN(new Date(form.starts_at))) return fail('Data inválida.');
   if (form.starts_at < nowLocal()) return fail('A data tem de ser no futuro.');
+  if (req.uploadError) return fail(req.uploadError);
 
+  let photoId = null;
+  if (req.file) {
+    try { photoId = await saveImage(req.file, 'event'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
+  }
   // Eventos criados pelo admin ficam logo aprovados; os restantes esperam aprovação.
-  await db.run(`INSERT INTO events (creator_id, type, title, description, location, starts_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    req.me.id, form.type, form.title, form.description, form.location, form.starts_at, req.me.is_admin ? 'approved' : 'pending');
+  await db.run(`INSERT INTO events (creator_id, type, title, description, location, starts_at, status, photo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    req.me.id, form.type, form.title, form.description, form.location, form.starts_at, req.me.is_admin ? 'approved' : 'pending', photoId);
   res.redirect(req.me.is_admin ? '/eventos' : '/eventos?criado=1');
 });
 
@@ -293,7 +336,11 @@ app.post('/eventos/:id/vou', requireAuth, async (req, res) => {
 });
 
 app.post('/eventos/:id/cancelar', requireAuth, async (req, res) => {
-  await db.run(`DELETE FROM events WHERE id = ? AND creator_id = ? AND status = 'pending'`, req.params.id, req.me.id);
+  const ev = await db.get(`SELECT photo_id FROM events WHERE id = ? AND creator_id = ? AND status = 'pending'`, req.params.id, req.me.id);
+  if (ev) {
+    await db.run('DELETE FROM events WHERE id = ?', req.params.id);
+    await deleteImage(ev.photo_id);
+  }
   res.redirect('/eventos');
 });
 

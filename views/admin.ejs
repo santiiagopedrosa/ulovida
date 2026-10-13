@@ -21,6 +21,7 @@
           <span>por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a><%- true ? ` <span class="muted">(${e.creator_email})</span>` : '' %></span>
         </div>
         <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
+        <% if (e.photo_id) { %><img class="event-photo" src="/img/<%= e.photo_id %>" alt="" loading="lazy" decoding="async"><% } %>
       <div class="row" style="margin-top:16px">
         <form method="post" action="/admin/eventos/<%= e.id %>/aprovar"><button class="btn small"><%- include('partials/icon', { name: 'check' }) %> Aprovar</button></form>
         <form method="post" action="/admin/eventos/<%= e.id %>/rejeitar"><button class="btn small danger">Rejeitar</button></form>

@@ -73,4 +73,18 @@ await client.executeMultiple(`
     user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     PRIMARY KEY (event_id, user_id)
   );
+
+  -- Fotos já reduzidas (WebP), guardadas na própria BD para funcionar igual em local e na Vercel.
+  CREATE TABLE IF NOT EXISTS images (
+    id         INTEGER PRIMARY KEY,
+    data       BLOB NOT NULL,
+    mime       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
+
+// Colunas acrescentadas depois da primeira versão: adiciona-as se a BD ainda não as tiver.
+for (const table of ['users', 'events']) {
+  const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = 'photo_id'`);
+  if (!rows.length) await client.execute(`ALTER TABLE ${table} ADD COLUMN photo_id INTEGER REFERENCES images(id) ON DELETE SET NULL`);
+}

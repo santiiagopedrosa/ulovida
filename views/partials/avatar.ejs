@@ -1,2 +1,1 @@
-<% const parts = u.name.trim().split(/\s+/); const ini = (parts[0][0] + (parts.length > 1 ? parts.at(-1)[0] : '')).toUpperCase(); %>
-<span class="avatar <%= locals.big ? 'big' : '' %>" style="--h: <%= (u.id * 47) % 360 %>"><%= ini %></span>
+<% if (u.photo_id) { %><img class="avatar <%= locals.big ? 'big' : '' %>" src="/img/<%= u.photo_id %>" alt="<%= u.name %>" loading="lazy" decoding="async"><% } else { %><% const parts = u.name.trim().split(/\s+/); const ini = (parts[0][0] + (parts.length > 1 ? parts.at(-1)[0] : '')).toUpperCase(); %><span class="avatar <%= locals.big ? 'big' : '' %>" style="--h: <%= (u.id * 47) % 360 %>" aria-hidden="true"><%= ini %></span><% } %>

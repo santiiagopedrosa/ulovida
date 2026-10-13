@@ -149,6 +149,34 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--i
 .notice { background: var(--ok-soft); color: var(--ok-ink); }
 .alert .icon, .notice .icon { margin-top: 2px; }
 
+/* ---------- fotos ---------- */
+.photo-field { display: flex; gap: 18px; align-items: center; }
+.photo-field .hint { margin: 6px 0 0; }
+.field { display: grid; gap: 8px; justify-items: start; }
+.field-label { font-weight: 500; font-size: .875rem; color: var(--ink-2); }
+.file-btn { position: relative; overflow: hidden; }
+.form .file-btn { display: inline-flex; color: var(--ink); font-weight: 500; font-size: .85rem; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; min-height: 0; padding: 0; }
+.file-btn:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.form .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-weight: 400; color: var(--muted); }
+.check input { width: 18px; min-height: 18px; height: 18px; margin: 0; accent-color: var(--ink); }
+img.avatar { object-fit: cover; background: var(--surface); }
+.event-photo { display: block; width: 100%; max-width: 520px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); margin-top: 14px; background: var(--surface); }
+.field .event-photo { margin-top: 0; }
+[hidden] { display: none !important; }
+
+.cropper { width: min(440px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); color: var(--ink); }
+.cropper::backdrop { background: rgb(0 0 0 / .55); }
+.cropper-title { font-weight: 600; margin: 0 0 14px; }
+.cropper-stage { position: relative; width: 100%; overflow: hidden; border-radius: var(--radius); background: #000; touch-action: none; cursor: grab; user-select: none; }
+.cropper-stage:active { cursor: grabbing; }
+.cropper-stage canvas { display: block; width: 100%; height: 100%; }
+.cropper-stage.round::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgb(0 0 0 / .5); pointer-events: none; }
+.cropper-zoom { display: flex; align-items: center; gap: 12px; margin: 16px 0 4px; }
+.cropper-zoom input { flex: 1; min-height: 0; padding: 0; border: 0; accent-color: var(--ink); }
+.cropper-tip { margin: 0 0 16px; }
+.cropper-actions { justify-content: flex-end; }
+
 /* ---------- landing ---------- */
 .hero { padding: 72px 0 56px; max-width: 620px; }
 .hero h1 { font-size: clamp(2.3rem, 7vw, 3.75rem); letter-spacing: -0.045em; line-height: 1.05; margin-bottom: .35em; }
@@ -197,7 +225,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--i
 
 .stack { display: flex; align-items: center; }
 .stack a { margin-right: -8px; text-decoration: none; }
-.stack .muted { margin-left: 16px; font-size: .85rem; }
+.stack .muted { font-size: .85rem; }
+.stack a ~ .muted { margin-left: 16px; }
 
 .status { font-size: .75rem; font-weight: 500; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
 .status.pending { background: var(--warn-soft); color: var(--warn-ink); }

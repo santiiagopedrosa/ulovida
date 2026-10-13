@@ -2,7 +2,24 @@
 <section class="panel">
   <h1><%= novo ? 'Bem-vindo/a!' : 'Editar perfil' %></h1>
   <p class="muted"><%= novo ? 'Conta criada. Completa o teu perfil — ' : '' %>Tudo o que está aqui é visível para outras pessoas da ULO.</p>
-  <form method="post" action="/perfil/editar" class="form">
+  <form method="post" action="/perfil/editar" class="form" enctype="multipart/form-data">
+    <div class="photo-field">
+      <% if (form.photo_id) { %>
+        <img id="avatar-preview" class="avatar big" src="/img/<%= form.photo_id %>" alt="">
+      <% } else { %>
+        <img id="avatar-preview" class="avatar big" alt="" hidden>
+      <% } %>
+      <div>
+        <label class="btn ghost small file-btn">
+          <%- include('partials/icon', { name: 'camera' }) %> <%= form.photo_id ? 'Mudar foto' : 'Adicionar foto' %>
+          <input type="file" name="photo" accept="image/*" data-max="800" data-aspect="1" data-round data-preview="avatar-preview">
+        </label>
+        <% if (form.photo_id) { %>
+          <label class="check"><input type="checkbox" name="remove_photo" value="1"> Remover foto</label>
+        <% } %>
+        <p class="hint">JPG, PNG ou WebP.</p>
+      </div>
+    </div>
     <label>Nome <input name="name" value="<%= form.name %>" maxlength="60" autocomplete="name" required></label>
     <label>Curso <input name="course" value="<%= form.course %>" maxlength="80"></label>
     <label>Ano
@@ -27,4 +44,5 @@
     <button class="btn block">Guardar</button>
   </form>
 </section>
+<script src="/upload.js" defer></script>
 <%- include('partials/footer') %>
