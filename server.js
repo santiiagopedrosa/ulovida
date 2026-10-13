@@ -112,9 +112,9 @@ function timeAgo(ms) {
   if (min < 24 * 60) return `há ${Math.floor(min / 60)} h`;
   return new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'short', timeZone: 'Europe/Lisbon' }).format(ms);
 }
-// Cartão de membro: número (pelo id, por ordem de entrada) e mês de entrada.
+// Cartão de estudante: número (pelo id, por ordem de entrada) e mês de entrada.
 const memberNo = (id) => String(id).padStart(4, '0');
-// Equipa do ULOO: aparece com etiqueta própria e cartão de fundador.
+// Equipa do ULOO: cartão dourado e selo de verificado.
 const STAFF = { 1: 'CEO', 2: 'COO' };
 const staffRole = (id) => STAFF[Number(id)] || null;
 // Selo de verificado: a equipa (ids 1 e 2) e quem tem pelo menos 100 seguidores.
