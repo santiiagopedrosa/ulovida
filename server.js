@@ -292,7 +292,9 @@ app.get('/eventos', requireAuth, async (req, res) => {
   await Promise.all(events.map(async (e) => {
     e.attendees = await db.all(`SELECT u.id, u.name, u.photo_id FROM event_attendees a JOIN users u ON u.id = a.user_id WHERE a.event_id = ? LIMIT 8`, e.id);
   }));
-  const mine = await db.all(`SELECT * FROM events WHERE creator_id = ? AND status != 'approved' ORDER BY created_at DESC LIMIT 10`, req.me.id);
+  // Pedidos ainda por aprovar ou rejeitados; somem quando a data passa ou quando a pessoa fecha o aviso.
+  const mine = await db.all(`SELECT * FROM events WHERE creator_id = ? AND status != 'approved' AND dismissed = 0 AND starts_at >= ?
+                             ORDER BY created_at DESC LIMIT 10`, req.me.id, nowLocal());
   res.render('eventos', { title: 'Eventos', events, mine, tipo, created: req.query.criado === '1' });
 });
 
@@ -333,6 +335,11 @@ app.post('/eventos/:id/vou', requireAuth, async (req, res) => {
     if (!del.changes) await db.run('INSERT INTO event_attendees (event_id, user_id) VALUES (?, ?)', ev.id, req.me.id);
   }
   res.redirect(`/eventos#e${req.params.id}`);
+});
+
+app.post('/eventos/:id/fechar', requireAuth, async (req, res) => {
+  await db.run(`UPDATE events SET dismissed = 1 WHERE id = ? AND creator_id = ? AND status = 'rejected'`, req.params.id, req.me.id);
+  res.redirect('/eventos');
 });
 
 app.post('/eventos/:id/cancelar', requireAuth, async (req, res) => {

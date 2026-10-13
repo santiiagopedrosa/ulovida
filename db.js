@@ -84,7 +84,13 @@ await client.executeMultiple(`
 `);
 
 // Colunas acrescentadas depois da primeira versão: adiciona-as se a BD ainda não as tiver.
-for (const table of ['users', 'events']) {
-  const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = 'photo_id'`);
-  if (!rows.length) await client.execute(`ALTER TABLE ${table} ADD COLUMN photo_id INTEGER REFERENCES images(id) ON DELETE SET NULL`);
+const migrations = [
+  ['users', 'photo_id', 'INTEGER REFERENCES images(id) ON DELETE SET NULL'],
+  ['events', 'photo_id', 'INTEGER REFERENCES images(id) ON DELETE SET NULL'],
+  // 1 quando quem pediu o evento fechou o aviso de "Rejeitado".
+  ['events', 'dismissed', 'INTEGER NOT NULL DEFAULT 0'],
+];
+for (const [table, column, type] of migrations) {
+  const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);
+  if (!rows.length) await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }

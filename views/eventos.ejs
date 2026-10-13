@@ -57,6 +57,8 @@
       <span class="grow"><strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %></span></span>
       <% if (e.status === 'pending') { %>
         <form method="post" action="/eventos/<%= e.id %>/cancelar" class="inline"><button class="linkbtn small">Cancelar</button></form>
+      <% } else { %>
+        <form method="post" action="/eventos/<%= e.id %>/fechar" class="inline"><button class="icon-btn" title="Fechar" aria-label="Fechar aviso de <%= e.title %>"><%- include('partials/icon', { name: 'x' }) %></button></form>
       <% } %>
     </div>
   <% } %>

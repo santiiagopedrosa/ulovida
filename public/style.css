@@ -120,6 +120,8 @@ nav form { margin: 0; }
 .btn.block { width: 100%; min-height: 44px; }
 .linkbtn { background: none; border: 0; padding: 4px 2px; cursor: pointer; color: var(--muted); font: inherit; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 .linkbtn:hover { color: var(--ink); }
+.icon-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--muted); cursor: pointer; transition: background .15s var(--ease), color .15s var(--ease); }
+.icon-btn:hover { background: var(--surface); color: var(--ink); }
 
 /* ---------- formulários ---------- */
 .panel { max-width: 420px; margin: 0 auto; }
