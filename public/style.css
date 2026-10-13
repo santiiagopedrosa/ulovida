@@ -39,8 +39,33 @@
   /* Avenir Next vem instalada em iPhone/Mac; nos outros aparelhos usa a Figtree (gratuita e parecida). */
   --font: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
   --font-display: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
-  /* Sempre as mesmas cores, com o telemóvel em modo claro ou escuro. */
-  color-scheme: only light;
+}
+
+/* Tema verde-escuro da ULO: é o único, em todos os aparelhos. */
+:root {
+  --bg: #022a1f;
+  --card: #063427;
+  --surface: #0b3f30;
+  --ink: #f7f5e8;
+  --ink-2: #dfe8dc;
+  --muted: #a6bdb2;
+  --line: #134a3a;
+  --line-strong: #23604d;
+  --accent: #f7eb7d;
+  --accent-hover: #fff39b;
+  --accent-text: #f7eb7d;
+  --accent-soft: #0e4434;
+  --on-accent: #022a1f;
+  --header: #011d15;
+  --pre: #f59a8c;
+  --danger: #f59a8c;
+  --danger-soft: #3a1a17;
+  --warn-ink: #f7eb7d;
+  --warn-soft: #2f3a1a;
+  --ok-ink: #7be3b1;
+  --ok-soft: #0c3d2c;
+  /* Diz ao browser que o site já é escuro, para não alterar as cores. */
+  color-scheme: only dark;
 }
 
 /* ---------- base ---------- */
