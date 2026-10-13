@@ -137,7 +137,18 @@ cam.querySelector('[data-act=back]').addEventListener('click', () => {
 // ---------- texto ----------
 // Cada texto guarda posição (x, y) e tamanho como fração do enquadramento, para sair igual na imagem final.
 const COLORS = ['#ffffff', '#111111', '#e8b64c', '#9f1d35', '#ff5c8a', '#4cc3ff', '#7be07b'];
-const FONT = (px) => `800 ${px}px "Avenir Next", Avenir, Figtree, system-ui, sans-serif`;
+// Estilos de letra: a mesma definição serve para o ecrã e para a imagem final.
+const FONTS = {
+  classica: { label: 'Clássica', css: (px) => `800 ${px}px "Avenir Next", Avenir, Figtree, system-ui, sans-serif` },
+  elegante: { label: 'Elegante', css: (px) => `400 ${px}px "DM Serif Display", Georgia, serif` },
+  mao: { label: 'À mão', css: (px) => `700 ${px * 1.15}px Caveat, "Segoe Script", cursive` },
+  maquina: { label: 'Máquina', css: (px) => `700 ${px * 0.85}px "Space Mono", "Courier New", monospace` },
+  cartaz: { label: 'Cartaz', css: (px) => `400 ${px * 1.2}px "Bebas Neue", Impact, sans-serif`, upper: true },
+  neon: { label: 'Néon', css: (px) => `800 ${px}px "Avenir Next", Avenir, Figtree, system-ui, sans-serif`, glow: true },
+};
+const fontOf = (t) => FONTS[t.font] || FONTS.classica;
+const FONT = (px, t = {}) => fontOf(t).css(px);
+const shown = (t) => (fontOf(t).upper ? t.text.toUpperCase() : t.text);
 const MAX_TEXT_W = 0.86;
 const textsLayer = cam.querySelector('.cam-texts');
 const editor = cam.querySelector('.text-editor');
@@ -145,6 +156,7 @@ const editorInput = editor.querySelector('textarea');
 const sizeInput = editor.querySelector('.text-size');
 const bgBtn = editor.querySelector('[data-act=text-bg]');
 const colorsEl = editor.querySelector('.text-colors');
+const fontsEl = editor.querySelector('.text-fonts');
 const texts = [];
 let editing = null; // texto a ser editado
 const measureCtx = document.createElement('canvas').getContext('2d');
@@ -174,16 +186,17 @@ function renderTexts() {
   const fw = frame.clientWidth, fh = frame.clientHeight;
   textsLayer.replaceChildren(...texts.filter((t) => t !== editing).map((t) => {
     const el = document.createElement('div');
-    el.className = `cam-text${t.bg ? ' bg' : ''}`;
+    el.className = `cam-text${t.bg ? ' bg' : ''}${fontOf(t).glow && !t.bg ? ' neon' : ''}`;
     const px = t.size * fw;
-    measureCtx.font = FONT(px);
-    for (const line of wrap(measureCtx, t.text, MAX_TEXT_W * fw)) {
+    measureCtx.font = FONT(px, t);
+    for (const line of wrap(measureCtx, shown(t), MAX_TEXT_W * fw)) {
       const span = document.createElement('span');
       span.textContent = line || ' ';
       el.append(span);
     }
+    el.style.font = FONT(px, t);
     Object.assign(el.style, {
-      left: `${t.x * fw}px`, top: `${t.y * fh}px`, fontSize: `${px}px`,
+      left: `${t.x * fw}px`, top: `${t.y * fh}px`, lineHeight: 1.3,
       color: t.bg ? inkOn(t.color) : t.color,
       '--bg': t.color,
     });
@@ -223,20 +236,35 @@ for (const c of COLORS) {
   b.addEventListener('click', () => { editing.color = c; syncEditor(); });
   colorsEl.append(b);
 }
+// Fila de estilos de letra, cada botão escrito na sua própria letra.
+for (const [id, f] of Object.entries(FONTS)) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = `font-chip${f.glow ? ' neon' : ''}`; b.dataset.font = id;
+  b.setAttribute('role', 'radio');
+  b.textContent = f.label;
+  b.style.font = f.css(15);
+  b.addEventListener('click', () => { editing.font = id; syncEditor(); });
+  fontsEl.append(b);
+}
 function syncEditor() {
   const t = editing;
   const px = t.size * frame.clientWidth;
+  editorInput.style.font = FONT(px, t);
+  editorInput.style.textTransform = fontOf(t).upper ? 'uppercase' : 'none';
+  editorInput.classList.toggle('neon', Boolean(fontOf(t).glow && !t.bg));
+  editorInput.style.setProperty('--glow', t.color);
   Object.assign(editorInput.style, {
-    fontSize: `${px}px`,
+    lineHeight: 1.3,
     color: t.bg ? inkOn(t.color) : t.color,
     background: t.bg ? t.color : 'transparent',
   });
   bgBtn.setAttribute('aria-pressed', String(t.bg));
   sizeInput.value = t.size;
   colorsEl.querySelectorAll('.swatch').forEach((b, i) => b.setAttribute('aria-checked', String(COLORS[i] === t.color)));
+  fontsEl.querySelectorAll('.font-chip').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.font === (t.font || 'classica'))));
 }
 function openTextEditor(t) {
-  editing = t || { text: '', color: '#ffffff', bg: false, size: 0.075, x: 0.5, y: 0.4, isNew: true };
+  editing = t || { text: '', color: '#ffffff', bg: false, size: 0.075, x: 0.5, y: 0.4, font: 'classica', isNew: true };
   editorInput.value = editing.text;
   editor.hidden = false;
   cam.classList.add('texting');
@@ -264,10 +292,11 @@ addEventListener('resize', () => { if (cam.dataset.state === 'edit') renderTexts
 function drawTexts(ctx, w, h) {
   for (const t of texts) {
     const px = t.size * w;
-    ctx.font = FONT(px);
+    ctx.font = FONT(px, t);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const lines = wrap(ctx, t.text, MAX_TEXT_W * w);
+    const lines = wrap(ctx, shown(t), MAX_TEXT_W * w);
+    const neon = fontOf(t).glow && !t.bg;
     const lh = px * 1.3;
     const top = t.y * h - (lines.length * lh) / 2;
     lines.forEach((line, i) => {
@@ -280,6 +309,13 @@ function drawTexts(ctx, w, h) {
         ctx.fill();
         ctx.fillStyle = inkOn(t.color);
         ctx.shadowColor = 'transparent';
+      } else if (neon) {
+        // Néon: várias passagens com brilho da mesma cor.
+        ctx.fillStyle = t.color;
+        ctx.shadowColor = t.color;
+        for (const blur of [px * 0.9, px * 0.45, px * 0.2]) { ctx.shadowBlur = blur; ctx.fillText(line, t.x * w, cy); }
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = px * 0.08;
       } else {
         ctx.fillStyle = t.color;
         ctx.shadowColor = 'rgba(0,0,0,.35)';
@@ -327,9 +363,17 @@ function playClip() {
   audio.currentTime = music.start;
   audio.play().catch(() => {});
 }
+// O autocolante fica onde a pessoa o arrastar (fração do enquadramento) e pode ser escondido.
+function placeChip() {
+  chip.hidden = !music || music.hidden;
+  if (!music) return;
+  chip.style.left = `${music.x * 100}%`;
+  chip.style.top = `${music.y * 100}%`;
+}
 function setMusic(m) {
-  music = m;
-  chip.hidden = !m;
+  music = m && { x: 0.5, y: 0.82, hidden: false, ...m };
+  if (stickerToggle) stickerToggle.checked = !music?.hidden;
+  placeChip();
   audio.pause();
   if (!m) return;
   chip.querySelector('img').src = m.artwork;
@@ -387,8 +431,34 @@ function moveTrim(e) {
   updateTrim();
 }
 
+// Arrastar o autocolante; um toque sem arrastar abre a escolha do trecho.
+let chipDrag = null, chipMoved = false;
+chip.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('[data-act=remove-music]')) return;
+  chip.setPointerCapture(e.pointerId);
+  chipDrag = { x: e.clientX, y: e.clientY, mx: music.x, my: music.y };
+  chipMoved = false;
+  chip.classList.add('dragging');
+});
+chip.addEventListener('pointermove', (e) => {
+  if (!chipDrag) return;
+  const dx = e.clientX - chipDrag.x, dy = e.clientY - chipDrag.y;
+  if (Math.hypot(dx, dy) > 5) chipMoved = true;
+  music.x = Math.min(0.95, Math.max(0.05, chipDrag.mx + dx / frame.clientWidth));
+  music.y = Math.min(0.95, Math.max(0.05, chipDrag.my + dy / frame.clientHeight));
+  placeChip();
+});
+const endChipDrag = () => { chipDrag = null; chip.classList.remove('dragging'); };
+chip.addEventListener('pointerup', endChipDrag);
+chip.addEventListener('pointercancel', endChipDrag);
+
+// Mostrar/esconder o autocolante (a música toca na mesma).
+const stickerToggle = sheet.querySelector('#music-sticker');
+stickerToggle?.addEventListener('change', () => { if (music) { music.hidden = !stickerToggle.checked; placeChip(); } });
+
 cam.querySelectorAll('[data-act=music]').forEach((b) => b.addEventListener('click', (e) => {
   if (e.target.closest('[data-act=remove-music]')) { setMusic(null); return; }
+  if (b === chip && chipMoved) { chipMoved = false; return; }
   sheet.showModal();
   if (music) openTrim(); else showPane('search');
 }));
@@ -454,6 +524,7 @@ publishBtn.addEventListener('click', async () => {
   publishBtn.textContent = 'A publicar…';
   try {
     await document.fonts.ready;
+    await Promise.all(texts.map((t) => document.fonts.load(FONT(40, t), shown(t)).catch(() => {})));
     const out = document.createElement('canvas');
     out.width = OUT_W; out.height = OUT_H;
     const ctx = out.getContext('2d');
@@ -470,6 +541,9 @@ publishBtn.addEventListener('click', async () => {
       body.append('music_artwork', music.artwork);
       body.append('music_url', music.url || '');
       body.append('music_start', String(Math.round(music.start * 10) / 10));
+      body.append('music_x', music.x.toFixed(3));
+      body.append('music_y', music.y.toFixed(3));
+      body.append('music_hidden', music.hidden ? '1' : '0');
     }
     const r = await fetch('/stories/nova', { method: 'POST', body, headers: { accept: 'application/json' } });
     const data = await r.json();

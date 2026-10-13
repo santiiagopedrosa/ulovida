@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="apple-mobile-web-app-title" content="ULOO">
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Bebas+Neue&family=Caveat:wght@700&family=DM+Serif+Display&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="story-page cam-page">
@@ -54,6 +54,7 @@
     </div>
     <textarea rows="3" maxlength="200" placeholder="Escreve…" aria-label="Texto"></textarea>
     <input type="range" class="text-size" min="0.045" max="0.14" step="0.005" value="0.075" aria-label="Tamanho do texto">
+    <div class="text-fonts" role="radiogroup" aria-label="Estilo de letra"></div>
     <div class="text-colors" role="radiogroup" aria-label="Cor do texto"></div>
   </div>
 
@@ -70,6 +71,7 @@
       <p class="trim-label">Arrasta para escolher o trecho de 15 s</p>
       <div class="trim-bar"><div class="trim-wave"></div><div class="trim-window"><span class="trim-progress"></span></div></div>
       <p class="trim-time"></p>
+      <label class="switch-row"><input type="checkbox" id="music-sticker" checked> <span>Mostrar autocolante na foto</span></label>
       <div class="row trim-actions">
         <button type="button" class="btn ghost" data-act="change-music">Mudar música</button>
         <button type="button" class="btn" data-act="trim-done">Concluído</button>

@@ -24,7 +24,7 @@
   </header>
   <% stories.forEach((st, i) => { %>
     <figure class="story-slide" data-id="<%= st.id %>" data-time="<%= timeAgo(st.created_at) %>" data-views="<%= st.views %>" data-likes="<%= st.likes %>" data-liked="<%= st.liked ? 1 : 0 %>"
-      <% if (st.music_preview) { %>data-music="<%= st.music_preview %>" data-music-title="<%= st.music_title %>" data-music-artist="<%= st.music_artist %>" data-music-artwork="<%= st.music_artwork || '' %>" data-music-url="<%= st.music_url || '' %>" data-music-start="<%= st.music_start || 0 %>"<% } %> hidden>
+      <% if (st.music_preview) { %>data-music="<%= st.music_preview %>" data-music-title="<%= st.music_title %>" data-music-artist="<%= st.music_artist %>" data-music-artwork="<%= st.music_artwork || '' %>" data-music-url="<%= st.music_url || '' %>" data-music-start="<%= st.music_start || 0 %>" data-music-x="<%= st.music_x ?? 0.5 %>" data-music-y="<%= st.music_y ?? 0.82 %>" data-music-hidden="<%= st.music_hidden ? 1 : 0 %>"<% } %> hidden>
       <img src="/img/<%= st.image_id %>" alt="Momento de <%= user.name %>" <%= i === start ? '' : 'loading="lazy"' %>>
     </figure>
   <% }) %>

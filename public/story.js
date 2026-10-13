@@ -41,7 +41,14 @@ document.addEventListener('pointerdown', (e) => {
 soundBtn.addEventListener('click', () => { autoMuted = false; muted = !muted; audio.muted = muted; if (!muted) audio.play().catch(() => {}); setSoundIcon(); });
 function updateMusic(s) {
   const src = s.dataset.music;
-  musicEl.hidden = soundBtn.hidden = !src;
+  soundBtn.hidden = !src;
+  // O autocolante pode estar escondido (a música toca na mesma) e fica onde quem publicou o pôs.
+  musicEl.hidden = !src || s.dataset.musicHidden === '1';
+  // Posição relativa à foto (9:16), não ao ecrã, para ficar onde foi posto no editor.
+  const img = s.querySelector('img').getBoundingClientRect(), v = viewer.getBoundingClientRect();
+  const fx = Number(s.dataset.musicX) || 0.5, fy = Number(s.dataset.musicY) || 0.82;
+  musicEl.style.left = `${img.left - v.left + fx * img.width}px`;
+  musicEl.style.top = `${img.top - v.top + fy * img.height}px`;
   if (!src) { audio.pause(); return; }
   musicEl.href = s.dataset.musicUrl || '#';
   musicEl.querySelector('img').src = s.dataset.musicArtwork;

@@ -184,6 +184,10 @@ const migrations = [
   // Imagem opcional numa boca.
   ['posts', 'image_id', 'INTEGER'],
   ['users', 'praxe_name', "TEXT NOT NULL DEFAULT ''"],
+  // Posição do autocolante da música no momento (fração do ecrã) e se está escondido.
+  ['stories', 'music_x', 'REAL NOT NULL DEFAULT 0.5'],
+  ['stories', 'music_y', 'REAL NOT NULL DEFAULT 0.82'],
+  ['stories', 'music_hidden', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

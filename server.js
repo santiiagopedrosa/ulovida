@@ -656,8 +656,11 @@ app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
   const music = preview ? [str(req.body.music_title, 120), str(req.body.music_artist, 120), preview,
     appleUrl(req.body.music_artwork, ['mzstatic.com']), appleUrl(req.body.music_url, ['apple.com']),
     Math.min(60, Math.max(0, Number(req.body.music_start) || 0))] : [null, null, null, null, null, 0];
-  await db.run(`INSERT INTO stories (user_id, image_id, created_at, expires_at, music_title, music_artist, music_preview, music_artwork, music_url, music_start)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music);
+  const frac = (v, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : d; };
+  await db.run(`INSERT INTO stories (user_id, image_id, created_at, expires_at, music_title, music_artist, music_preview, music_artwork, music_url, music_start,
+      music_x, music_y, music_hidden)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music,
+    frac(req.body.music_x, 0.5), frac(req.body.music_y, 0.82), req.body.music_hidden === '1' ? 1 : 0);
   if (wantsJson) return res.json({ ok: true, redirect: '/eventos' });
   res.redirect('/eventos');
 });
