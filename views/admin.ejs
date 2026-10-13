@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<div class="pagehead">
+  <h1>Admin</h1>
+  <span class="muted"><%= userCount %> pessoas registadas</span>
+</div>
+
+<h2>Pedidos pendentes (<%= pending.length %>)</h2>
+<% for (const e of pending) { %>
+  <article class="card event">
+    <div class="event-date"><%= fmtDate(e.starts_at) %></div>
+    <div class="event-body">
+      <span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span>
+      <h3><%= e.title %></h3>
+      <p class="muted small">📍 <%= e.location %> · por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a> (<%= e.creator_email %>)</p>
+      <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
+      <div class="row">
+        <form method="post" action="/admin/eventos/<%= e.id %>/aprovar"><button class="btn small">Aprovar</button></form>
+        <form method="post" action="/admin/eventos/<%= e.id %>/rejeitar"><button class="btn small danger">Rejeitar</button></form>
+      </div>
+    </div>
+  </article>
+<% } %>
+<% if (!pending.length) { %><p class="muted">Nada para aprovar. 👌</p><% } %>
+
+<h2>Aprovados</h2>
+<% for (const e of recent) { %>
+  <div class="mini">
+    <span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span> <strong><%= e.title %></strong>
+    <span class="muted small"><%= fmtDate(e.starts_at) %> · <%= e.creator_name %></span>
+    <form method="post" action="/admin/eventos/<%= e.id %>/rejeitar" class="inline"><button class="linkbtn small">Remover</button></form>
+  </div>
+<% } %>
+<%- include('partials/footer') %>

@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1><%= novo ? 'Bem-vindo/a! 🎉' : 'Editar perfil' %></h1>
+  <% if (novo) { %><p class="muted">Conta criada. Completa o teu perfil — tudo o que está aqui é visível para outras pessoas da ULO.</p><% } %>
+  <form method="post" action="/perfil/editar" class="form">
+    <label>Nome <input name="name" value="<%= form.name %>" maxlength="60" required></label>
+    <label>Curso <input name="course" value="<%= form.course %>" maxlength="80"></label>
+    <label>Ano
+      <select name="year" required>
+        <% for (const a of ANOS) { %><option <%= form.year === a ? 'selected' : '' %>><%= a %></option><% } %>
+      </select>
+    </label>
+    <label>Praxe
+      <select name="praxe">
+        <option value="">Prefiro não dizer</option>
+        <% for (const [k, v] of Object.entries(PRAXE)) { %><option value="<%= k %>" <%= form.praxe === k ? 'selected' : '' %>><%= v %></option><% } %>
+      </select>
+    </label>
+    <label>Estado de relação
+      <select name="relationship">
+        <option value="">Prefiro não dizer</option>
+        <% for (const [k, v] of Object.entries(RELACAO)) { %><option value="<%= k %>" <%= form.relationship === k ? 'selected' : '' %>><%= v %></option><% } %>
+      </select>
+    </label>
+    <label>Instagram <input name="instagram" value="<%= form.instagram %>" placeholder="@utilizador" maxlength="31"></label>
+    <label>Bio <textarea name="bio" rows="4" maxlength="500"><%= form.bio %></textarea></label>
+    <button class="btn">Guardar</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

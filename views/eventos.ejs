@@ -1,0 +1,50 @@
+<%- include('partials/header') %>
+<div class="pagehead">
+  <h1>Eventos</h1>
+  <a class="btn" href="/eventos/novo">+ Criar convívio ou pré</a>
+</div>
+<% if (created) { %><div class="notice">Pedido enviado! O evento aparece aqui assim que for aprovado.</div><% } %>
+
+<div class="tabs">
+  <a href="/eventos" class="<%= tipo === '' ? 'on' : '' %>">Todos</a>
+  <a href="/eventos?tipo=convivio" class="<%= tipo === 'convivio' ? 'on' : '' %>">Convívios</a>
+  <a href="/eventos?tipo=pre" class="<%= tipo === 'pre' ? 'on' : '' %>">Prés</a>
+</div>
+
+<div class="events">
+  <% for (const e of events) { %>
+    <article class="card event" id="e<%= e.id %>">
+      <div class="event-date"><%= fmtDate(e.starts_at) %></div>
+      <div class="event-body">
+        <span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span>
+        <h3><%= e.title %></h3>
+        <p class="muted small">📍 <%= e.location %> · por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a></p>
+        <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
+        <div class="event-foot">
+          <div class="stack">
+            <% for (const a of e.attendees) { %><a href="/u/<%= a.id %>" title="<%= a.name %>"><%- include('partials/avatar', { u: a }) %></a><% } %>
+            <span class="muted small"><%= e.going %> vai<%= e.going === 1 ? '' : 'm' %></span>
+          </div>
+          <form method="post" action="/eventos/<%= e.id %>/vou">
+            <button class="btn small <%= e.im_going ? 'ghost' : '' %>"><%= e.im_going ? 'Já não vou' : 'Vou! 🙋' %></button>
+          </form>
+        </div>
+      </div>
+    </article>
+  <% } %>
+  <% if (!events.length) { %><p class="muted">Ainda não há eventos marcados. Cria o primeiro!</p><% } %>
+</div>
+
+<% if (mine.length) { %>
+  <h2>Os teus pedidos</h2>
+  <% for (const e of mine) { %>
+    <div class="mini">
+      <span class="status <%= e.status %>"><%= e.status === 'pending' ? 'À espera de aprovação' : 'Rejeitado' %></span>
+      <strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %></span>
+      <% if (e.status === 'pending') { %>
+        <form method="post" action="/eventos/<%= e.id %>/cancelar" class="inline"><button class="linkbtn small">Cancelar</button></form>
+      <% } %>
+    </div>
+  <% } %>
+<% } %>
+<%- include('partials/footer') %>

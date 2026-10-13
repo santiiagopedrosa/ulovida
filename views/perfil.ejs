@@ -1,0 +1,35 @@
+<%- include('partials/header') %>
+<section class="card profile">
+  <%- include('partials/avatar', { u: user, big: true }) %>
+  <div class="profile-main">
+    <h1><%= user.name %></h1>
+    <p class="muted"><%= user.course %> · <%= user.year %></p>
+    <div class="facts">
+      <div><span class="label">Praxe</span><%= PRAXE[user.praxe] || '—' %></div>
+      <div><span class="label">Coração</span><%= RELACAO[user.relationship] || '—' %></div>
+      <% if (user.instagram) { %>
+        <div><span class="label">Instagram</span><a href="https://instagram.com/<%= user.instagram %>" target="_blank" rel="noopener">@<%= user.instagram %></a></div>
+      <% } %>
+    </div>
+    <% if (user.bio) { %><p class="bio"><%= user.bio %></p><% } %>
+    <% if (me.id === user.id) { %><a class="btn ghost small" href="/perfil/editar">Editar perfil</a><% } %>
+  </div>
+</section>
+
+<div class="two">
+  <section>
+    <h2>Vai a</h2>
+    <% for (const e of going) { %>
+      <div class="mini"><span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span> <strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %></span></div>
+    <% } %>
+    <% if (!going.length) { %><p class="muted">Nada marcado.</p><% } %>
+  </section>
+  <section>
+    <h2>Organizou</h2>
+    <% for (const e of created) { %>
+      <div class="mini"><span class="pill <%= e.type %>"><%= TIPOS[e.type] %></span> <strong><%= e.title %></strong> <span class="muted small"><%= fmtDate(e.starts_at) %></span></div>
+    <% } %>
+    <% if (!created.length) { %><p class="muted">Ainda nada.</p><% } %>
+  </section>
+</div>
+<%- include('partials/footer') %>

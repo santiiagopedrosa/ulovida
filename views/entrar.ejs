@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1>Entrar</h1>
+  <form method="post" action="/entrar" class="form">
+    <label>Email
+      <input type="email" name="email" value="<%= email %>" placeholder="nome@ulo.pt" required autofocus>
+    </label>
+    <label>Password
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="btn">Entrar</button>
+  </form>
+  <p class="muted small">Ainda não tens conta? <a href="/registar">Regista-te</a>.</p>
+</section>
+<%- include('partials/footer') %>
