@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<p class="muted small back-link"><a href="/eventos">← Eventos</a></p>
+<% const d = fmtParts(e.starts_at); %>
+<article class="event <%= e.type %> event-detail" id="e<%= e.id %>">
+  <% if (e.im_going) { %><span class="stamp" aria-hidden="true">Vou</span><% } %>
+  <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
+  <div class="event-body">
+    <span class="type <%= e.type %>"><%= TIPOS[e.type] %></span><% if (e.visibility !== 'public') { %><span class="private"><%- include('partials/icon', { name: 'lock' }) %> <%= e.visibility === 'mutual' ? 'Seguidores mútuos' : 'Só convidados' %></span><% } %>
+    <h1><%= e.title %></h1>
+    <div class="meta">
+      <span><%- include('partials/icon', { name: 'clock' }) %> <%= d.time %></span>
+      <span><%- include('partials/icon', { name: 'pin' }) %> <%= e.location %></span>
+      <span>por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a></span>
+    </div>
+    <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
+    <% if (e.photo_id) { %><img class="event-photo" src="/img/<%= e.photo_id %>" alt="" decoding="async"><% } %>
+    <div class="event-foot">
+      <div class="stack">
+        <% for (const a of e.attendees) { %><a href="/u/<%= a.id %>" title="<%= a.name %>"><%- include('partials/avatar', { u: a }) %></a><% } %>
+        <span class="muted"><%= e.going %> <%= e.going === 1 ? 'vai' : 'vão' %></span>
+      </div>
+      <form method="post" action="/eventos/<%= e.id %>/vou">
+        <% if (e.im_going) { %>
+          <button class="btn small ghost"><%- include('partials/icon', { name: 'ticket' }) %> Tenho lugar</button>
+        <% } else { %>
+          <button class="btn small"><%- include('partials/icon', { name: 'ticket' }) %> Vou</button>
+        <% } %>
+      </form>
+    </div>
+  </div>
+</article>
+<%- include('partials/comments', { comments, action: `/eventos/${e.id}/comentar`, max }) %>
+<%- include('partials/footer') %>

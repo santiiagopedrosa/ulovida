@@ -16,6 +16,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="apple-mobile-web-app-title" content="ULOO">
   <link rel="stylesheet" href="/style.css">
+  <script src="/fx.js" defer></script>
 </head>
 <body>
 <header class="top">
@@ -27,9 +28,9 @@
 <% if (me) { %>
   <% const is = (...ps) => ps.some((p) => path === p || path.startsWith(p + '/'));
      const items = [
-       ['/eventos', 'Eventos', 'home', is('/eventos', '/stories') && path !== '/stories/nova'],
+       ['/eventos', 'Eventos', 'home', is('/eventos', '/stories', '/bocas') && path !== '/stories/nova'],
        ['/pessoas', 'Pessoas', 'users', is('/pessoas')],
-       ['/stories/nova', 'Nova story', 'plus', false, 0, '', 'create'],
+       ['/stories/nova', 'Novo momento', 'plus', false, 0, '', 'create'],
        ['/mensagens', 'Mensagens', 'message', is('/mensagens'), unreadCount, 'não lidas'],
        ['/u/' + me.id, 'Perfil', 'user', is('/u/' + me.id, '/perfil')],
      ];

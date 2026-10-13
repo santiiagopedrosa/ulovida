@@ -6,7 +6,7 @@
     <%- include('partials/avatar', { u: user, big: true, vt: true }) %>
   <% } %>
   <div class="profile-main">
-    <h1><%= user.name %></h1>
+    <h1><%= user.name %> <%- include('partials/seal') %></h1>
     <p class="muted"><%= [user.school, user.course, user.year].filter(Boolean).join(' · ') %></p>
     <div class="counts">
       <a href="/u/<%= user.id %>/seguidores"><strong><%= followers %></strong> <%= followers === 1 ? 'seguidor' : 'seguidores' %></a>
@@ -24,7 +24,7 @@
     <div class="row">
       <% if (me.id === user.id) { %>
         <a class="btn ghost small" href="/perfil/editar">Editar perfil</a>
-        <a class="btn ghost small" href="/stories/nova"><%- include('partials/icon', { name: 'plus' }) %> Story</a>
+        <a class="btn ghost small" href="/stories/nova"><%- include('partials/icon', { name: 'plus' }) %> Momento</a>
         <form method="post" action="/sair"><button class="btn ghost small"><%- include('partials/icon', { name: 'logout' }) %> Sair</button></form>
       <% } else { %>
         <form method="post" action="/u/<%= user.id %>/seguir">
@@ -39,6 +39,8 @@
     </div>
   </div>
 </section>
+
+<div class="profile-card"><%- include('partials/member-card', { u: user }) %></div>
 
 <div class="two">
   <section>

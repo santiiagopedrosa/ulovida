@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+<div class="pagehead">
+  <div>
+    <h1>Bocas</h1>
+    <p class="muted">Diz o que te vai na cabeça. Só a comunidade ULO lê.</p>
+  </div>
+</div>
+<%- include('partials/feed-tabs', { active: 'bocas' }) %>
+
+<form method="post" action="/bocas" class="composer">
+  <%- include('partials/avatar', { u: me }) %>
+  <div class="composer-main">
+    <textarea name="body" rows="2" maxlength="<%= max %>" placeholder="Manda uma boca…" aria-label="Nova boca" required><%= body %></textarea>
+    <div class="composer-foot">
+      <span class="composer-count muted small" data-max="<%= max %>"><%= max - body.length %></span>
+      <button class="btn small shine">Mandar boca</button>
+    </div>
+  </div>
+</form>
+
+<div class="bocas list">
+  <% for (const b of bocas) { %><%- include('partials/boca', { b }) %><% } %>
+  <% if (!bocas.length) { %><p class="empty">Ainda ninguém mandou nenhuma boca. Começa tu!</p><% } %>
+</div>
+<script src="/bocas.js" defer></script>
+<%- include('partials/footer') %>

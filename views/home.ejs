@@ -1,19 +1,27 @@
 <%- include('partials/header') %>
 <section class="hero">
-  
-  <p class="eyebrow">Exclusivo para a comunidade ULO</p>
+  <p class="eyebrow"><%- include('partials/icon', { name: 'lock' }) %> Acesso só com email @ulo.pt</p>
   <% let i = 0; const words = (t) => t.split(' ').map((w) => `<span style="--i:${i++}">${w}</span>`).join(' '); %>
   <h1 class="blur-text" aria-label="A vida académica, toda num sítio."><span aria-hidden="true"><%- words('A vida académica,') %> <em><%- words('toda num sítio.') %></em></span></h1>
-  <p class="lead">Encontra colegas, descobre convívios e prés, partilha stories e fala com quem vai. Só entra quem tem email <strong>@ulo.pt</strong>.</p>
+  <p class="lead">O clube privado de quem estuda na ULO. Convívios, prés, momentos e conversas — longe de quem não é de cá.</p>
   <div class="row">
-    <a class="btn" href="/registar">Criar conta</a>
-    <a class="btn ghost" href="/entrar">Já tenho conta</a>
+    <a class="btn shine" href="/registar">Pedir o meu cartão</a>
+    <a class="btn ghost" href="/entrar">Já sou membro</a>
   </div>
-  <p class="hero-foot">ESTG · ESECS · ESSLei · ESAD.CR · ESTM</p>
+  <div class="hero-stats">
+    <div><b data-count="<%= memberCount %>"><%= memberCount %></b><span>membros verificados</span></div>
+    <div><b data-count="5">5</b><span>escolas</span></div>
+    <div><b data-count="198">198</b><span>cursos</span></div>
+  </div>
 </section>
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <% for (let k = 0; k < 2; k++) { %><span>ESTG</span><i></i><span>ESECS</span><i></i><span>ESSLei</span><i></i><span>ESAD.CR</span><i></i><span>ESTM</span><i></i><span>Leiria</span><i></i><span>Caldas da Rainha</span><i></i><span>Peniche</span><i></i><% } %>
+  </div>
+</div>
 <section class="features">
-  <div><strong>Eventos</strong><p class="muted small">Convívios e prés, públicos ou só para quem escolheres.</p></div>
-  <div><strong>Stories</strong><p class="muted small">Fotos com texto e música que desaparecem em 24 horas.</p></div>
-  <div><strong>Só ULO</strong><p class="muted small">Cada conta é confirmada com o email institucional.</p></div>
+  <div><strong>Eventos</strong><p class="muted small">Convívios e prés com bilhete. Públicos, só para seguidores mútuos ou só para convidados.</p></div>
+  <div><strong>Momentos</strong><p class="muted small">Fotos com texto e música que desaparecem em 24 horas. Só quem te segue vê.</p></div>
+  <div><strong>Só membros</strong><p class="muted small">Cada conta é confirmada com o email institucional e recebe o seu cartão numerado.</p></div>
 </section>
 <%- include('partials/footer') %>

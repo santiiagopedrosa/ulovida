@@ -1,7 +1,11 @@
 <%- include('partials/header') %>
 <section class="panel">
   <h1><%= novo ? 'Bem-vindo/a!' : 'Editar perfil' %></h1>
-  <p class="muted"><%= novo ? 'Conta criada. Completa o teu perfil — ' : '' %>Tudo o que está aqui é visível para outras pessoas da ULO.</p>
+  <% if (novo) { %>
+    <p class="welcome-no">És o membro nº <b><%= memberNo(form.id) %></b> do ULOO.</p>
+    <%- include('partials/member-card', { u: form, reveal: true }) %>
+  <% } %>
+  <p class="muted"><%= novo ? 'Conta criada. Completa o teu perfil: tudo' : 'Tudo' %> o que está aqui é visível para outras pessoas da ULO.</p>
   <form method="post" action="/perfil/editar" class="form" enctype="multipart/form-data">
     <div class="photo-field">
       <% if (form.photo_id) { %>

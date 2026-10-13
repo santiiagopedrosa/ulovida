@@ -1,0 +1,12 @@
+<% const tone = { ESTG: 'var(--lime)', ESECS: 'var(--mint)', ESSLei: 'var(--pink)', 'ESAD.CR': 'var(--coral)', ESTM: 'var(--yellow)' }[u.school] || 'var(--yellow)'; %>
+<div class="member-card <%= locals.reveal ? 'reveal-card' : '' %>" style="--tone: <%= tone %>" data-tilt>
+  <div class="mc-top"><span class="mc-brand">ULOO<i></i></span><span class="mc-kind">Cartão de membro</span></div>
+  <div class="mc-name"><%= u.name %> <%- include('seal') %></div>
+  <div class="mc-course"><%= [u.course, u.year].filter(Boolean).join(' · ') || 'Comunidade ULO' %></div>
+  <div class="mc-bottom">
+    <span><small>Nº</small><b><%= memberNo(u.id) %></b></span>
+    <span><small>Escola</small><b><%= u.school || 'ULO' %></b></span>
+    <span><small>Desde</small><b><%= memberSince(u.created_at) %></b></span>
+  </div>
+  <i class="mc-shine" aria-hidden="true"></i>
+</div>

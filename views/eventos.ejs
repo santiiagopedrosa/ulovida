@@ -8,44 +8,37 @@
 </div>
 <div class="feed">
 <div class="feed-main">
-<div class="stories-bar" aria-label="Stories">
-  <% const mineHas = stories.length && stories[0].id === me.id; %>
-  <% if (!mineHas) { %>
-    <a class="story-item" href="/stories/nova">
-      <span class="story-add"><%- include('partials/avatar', { u: me }) %><i><%- include('partials/icon', { name: 'plus' }) %></i></span>
-      <span class="story-name">A tua story</span>
+<section class="moments" aria-label="Momentos">
+  <div class="moments-head"><h2>Momentos</h2><span class="muted small">Desaparecem em 24 h · só para quem te segue</span></div>
+  <div class="moments-bar">
+    <a class="moment add" href="/stories/nova">
+      <span class="moment-plus"><%- include('partials/icon', { name: 'plus' }) %></span>
+      <span class="moment-name">Novo momento</span>
     </a>
-  <% } %>
-  <% for (const st of stories) { %>
-    <a class="story-item" href="/stories/<%= st.id %>">
-      <span class="story-ring <%= st.unseen ? '' : 'seen' %>"><%- include('partials/avatar', { u: st }) %></span>
-      <span class="story-name"><%= st.id === me.id ? 'A tua story' : st.name.split(' ')[0] %></span>
-    </a>
-  <% } %>
-  <% if (mineHas) { %>
-    <a class="story-item" href="/stories/nova" title="Adicionar story">
-      <span class="story-add only"><%- include('partials/icon', { name: 'plus' }) %></span>
-      <span class="story-name">Adicionar</span>
-    </a>
-  <% } %>
-</div>
+    <% for (const st of stories) { %>
+      <a class="moment <%= st.unseen ? 'new' : 'seen' %>" href="/stories/<%= st.id %>">
+        <% if (st.cover) { %><img src="/img/<%= st.cover %>" alt="" loading="lazy" decoding="async"><% } %>
+        <% if (st.unseen) { %><span class="moment-new">Novo</span><% } %>
+        <span class="moment-who"><%- include('partials/avatar', { u: st }) %><span class="moment-name"><%= st.id === me.id ? 'Tu' : st.name.split(' ')[0] %></span></span>
+      </a>
+    <% } %>
+    <% if (!stories.length) { %><p class="moments-empty muted small">Segue colegas para veres os momentos deles aqui.</p><% } %>
+  </div>
+</section>
 
 <% if (created) { %><div class="notice" role="status"><%- include('partials/icon', { name: 'check' }) %><span>Pedido enviado! O evento aparece aqui assim que for aprovado.</span></div><% } %>
 
-<nav class="tabs" aria-label="Filtrar eventos">
-  <% for (const [t, label] of [['', 'Todos'], ['convivio', 'Convívios'], ['pre', 'Prés']]) { %>
-    <a href="/eventos<%= t ? '?tipo=' + t : '' %>" class="<%= tipo === t ? 'on' : '' %>"><%= label %><% if (tipo === t) { %><i class="tab-line" aria-hidden="true"></i><% } %></a>
-  <% } %>
-</nav>
+<%- include('partials/feed-tabs', { active: tipo }) %>
 
 <div class="list">
   <% for (const e of events) { %>
     <article class="event <%= e.type %>" id="e<%= e.id %>">
       <% const d = fmtParts(e.starts_at); %>
+      <% if (e.im_going) { %><span class="stamp" aria-hidden="true">Vou</span><% } %>
       <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
       <div class="event-body">
         <span class="type <%= e.type %>"><%= TIPOS[e.type] %></span><% if (e.visibility !== 'public') { %><span class="private"><%- include('partials/icon', { name: 'lock' }) %> <%= e.visibility === 'mutual' ? 'Seguidores mútuos' : 'Só convidados' %></span><% } %>
-        <h3><%= e.title %></h3>
+        <h3><a href="/eventos/<%= e.id %>" class="event-title"><%= e.title %></a></h3>
         <div class="meta">
           <span><%- include('partials/icon', { name: 'clock' }) %> <%= d.time %></span>
           <span><%- include('partials/icon', { name: 'pin' }) %> <%= e.location %></span>
@@ -57,12 +50,13 @@
           <div class="stack">
             <% for (const a of e.attendees) { %><a href="/u/<%= a.id %>" title="<%= a.name %>"><%- include('partials/avatar', { u: a }) %></a><% } %>
             <span class="muted"><%= e.going %> <%= e.going === 1 ? 'vai' : 'vão' %></span>
+            <a class="boca-link" href="/eventos/<%= e.id %>#comentarios" aria-label="<%= e.comments %> <%= e.comments === 1 ? 'comentário' : 'comentários' %>"><%- include('partials/icon', { name: 'message' }) %> <span><%= e.comments %></span></a>
           </div>
           <form method="post" action="/eventos/<%= e.id %>/vou">
             <% if (e.im_going) { %>
-              <button class="btn small ghost"><%- include('partials/icon', { name: 'check' }) %> Vais</button>
+              <button class="btn small ghost"><%- include('partials/icon', { name: 'ticket' }) %> Tenho lugar</button>
             <% } else { %>
-              <button class="btn small">Vou</button>
+              <button class="btn small"><%- include('partials/icon', { name: 'ticket' }) %> Vou</button>
             <% } %>
           </form>
         </div>

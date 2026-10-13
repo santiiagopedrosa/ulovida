@@ -1,0 +1,22 @@
+<section class="comments" id="comentarios">
+  <h2>Comentários · <%= comments.length %></h2>
+  <% for (const c of comments) { %>
+    <article class="comment" id="c<%= c.id %>">
+      <a href="/u/<%= c.user_id %>"><%- include('avatar', { u: { id: c.user_id, name: c.name, photo_id: c.photo_id } }) %></a>
+      <div class="comment-body">
+        <div class="comment-head"><a href="/u/<%= c.user_id %>"><strong><%= c.name %></strong></a> <%- include('seal') %><span class="muted small"><%= timeAgo(c.created_at) %></span>
+          <% if (c.user_id === me.id || me.is_admin) { %>
+            <form method="post" action="/comentarios/<%= c.id %>/apagar" class="inline"><button class="linkbtn small" aria-label="Apagar comentário">Apagar</button></form>
+          <% } %>
+        </div>
+        <p><%= c.body %></p>
+      </div>
+    </article>
+  <% } %>
+  <% if (!comments.length) { %><p class="muted small">Ainda sem comentários. Sê o primeiro.</p><% } %>
+  <form method="post" action="<%= action %>" class="comment-form">
+    <%- include('avatar', { u: me }) %>
+    <textarea name="body" rows="1" maxlength="<%= max %>" placeholder="Comentar…" aria-label="Comentário" required></textarea>
+    <button class="btn small">Comentar</button>
+  </form>
+</section>

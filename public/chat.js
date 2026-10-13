@@ -16,8 +16,8 @@ function add(m) {
   if (m.story_id) {
     const ref = document.createElement('span');
     ref.className = 'bubble-story';
-    ref.textContent = m.mine ? `Respondeste à story de ${chat.dataset.otherName}` : 'Respondeu à tua story';
-    if (m.story_image) ref.append(Object.assign(document.createElement('img'), { src: `/img/${m.story_image}`, alt: 'Story' }));
+    ref.textContent = m.mine ? `Respondeste ao momento de ${chat.dataset.otherName}` : 'Respondeu ao teu momento';
+    if (m.story_image) ref.append(Object.assign(document.createElement('img'), { src: `/img/${m.story_image}`, alt: 'Momento' }));
     else ref.append(' · expirou');
     div.append(ref);
   }

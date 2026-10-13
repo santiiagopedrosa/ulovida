@@ -123,6 +123,32 @@ await client.executeMultiple(`
     PRIMARY KEY (story_id, user_id)
   );
 
+  -- "Bocas": publicações curtas de texto (até 280 caracteres).
+  CREATE TABLE IF NOT EXISTS posts (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body       TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS posts_recent ON posts (id DESC);
+  CREATE TABLE IF NOT EXISTS post_likes (
+    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (post_id, user_id)
+  );
+
+  -- Comentários em bocas ('post') e em eventos ('event').
+  CREATE TABLE IF NOT EXISTS comments (
+    id          INTEGER PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_type TEXT NOT NULL CHECK (target_type IN ('post', 'event')),
+    target_id   INTEGER NOT NULL,
+    body        TEXT NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS comments_target ON comments (target_type, target_id, id);
+
   -- Convidados de eventos privados com visibilidade "selected".
   CREATE TABLE IF NOT EXISTS event_invites (
     event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,

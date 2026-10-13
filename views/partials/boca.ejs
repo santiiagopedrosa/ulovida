@@ -1,0 +1,20 @@
+<article class="boca <%= locals.big ? 'big' : '' %>" id="b<%= b.id %>">
+  <a href="/u/<%= b.user_id %>" class="boca-avatar"><%- include('avatar', { u: { id: b.user_id, name: b.name, photo_id: b.photo_id } }) %></a>
+  <div class="boca-main">
+    <div class="boca-head">
+      <a href="/u/<%= b.user_id %>"><strong><%= b.name %></strong></a> <%- include('seal') %>
+      <span class="muted small"><%= b.school || 'ULO' %> · <%= timeAgo(b.created_at) %></span>
+    </div>
+    <% if (locals.big) { %><p class="boca-text"><%= b.body %></p><% } else { %><a class="boca-text" href="/bocas/<%= b.id %>"><%= b.body %></a><% } %>
+    <div class="boca-actions">
+      <form method="post" action="/bocas/<%= b.id %>/fogo" class="fogo-form">
+        <input type="hidden" name="voltar" value="<%= locals.big ? `/bocas/${b.id}` : `/bocas#b${b.id}` %>">
+        <button class="fogo <%= b.my_fogo ? 'on' : '' %>" aria-pressed="<%= b.my_fogo ? 'true' : 'false' %>" aria-label="Fogo"><%- include('icon', { name: 'flame' }) %> <span><%= b.fogos %></span></button>
+      </form>
+      <a class="boca-link" href="/bocas/<%= b.id %>#comentarios"><%- include('icon', { name: 'message' }) %> <span><%= b.comments %></span></a>
+      <% if (b.user_id === me.id || me.is_admin) { %>
+        <form method="post" action="/bocas/<%= b.id %>/apagar" class="boca-del" onsubmit="return confirm('Apagar esta boca?')"><button class="linkbtn small">Apagar</button></form>
+      <% } %>
+    </div>
+  </div>
+</article>

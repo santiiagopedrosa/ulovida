@@ -107,14 +107,30 @@ const likeBtn = viewer.querySelector('.story-like');
 function setLiked(on) {
   if (!likeBtn) return;
   likeBtn.setAttribute('aria-pressed', String(on));
-  likeBtn.setAttribute('aria-label', on ? 'Retirar gosto' : 'Gosto');
+  likeBtn.setAttribute('aria-label', on ? 'Retirar fogo' : 'Reagir com fogo');
 }
 likeBtn?.addEventListener('click', async () => {
   const s = slides[i];
   const on = s.dataset.liked !== '1';
   s.dataset.liked = on ? '1' : '0';
   setLiked(on);
-  if (on) { likeBtn.classList.remove('pop'); void likeBtn.offsetWidth; likeBtn.classList.add('pop'); }
+  if (on) {
+    likeBtn.classList.remove('pop'); void likeBtn.offsetWidth; likeBtn.classList.add('pop');
+    // Pequeno estouro de chamas a partir do botão.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const r = likeBtn.getBoundingClientRect(), v = viewer.getBoundingClientRect();
+      for (let k = 0; k < 7; k++) {
+        const f = Object.assign(document.createElement('span'), { className: 'flame-burst', textContent: '🔥' });
+        f.style.left = `${r.left - v.left + r.width / 2 - 11}px`;
+        f.style.top = `${r.top - v.top}px`;
+        f.style.setProperty('--bx', `${(Math.random() - 0.5) * 120}px`);
+        f.style.setProperty('--by', `${-60 - Math.random() * 140}px`);
+        f.style.setProperty('--br', `${(Math.random() - 0.5) * 60}deg`);
+        viewer.append(f);
+        setTimeout(() => f.remove(), 900);
+      }
+    }
+  }
   try {
     const r = await fetch(`/stories/${s.dataset.id}/gosto`, { method: 'POST' });
     const data = await r.json();
@@ -177,7 +193,7 @@ if (sheet) {
     sheet.showModal();
     try {
       const people = await (await fetch(`/stories/${slides[i].dataset.id}/vistas`)).json();
-      if (!people.length) { list.innerHTML = '<li class="viewers-empty">Ainda ninguém viu esta story.</li>'; return; }
+      if (!people.length) { list.innerHTML = '<li class="viewers-empty">Ainda ninguém viu este momento.</li>'; return; }
       list.replaceChildren(...people.map((p) => {
         const li = document.createElement('li');
         const a = document.createElement('a');
@@ -187,7 +203,7 @@ if (sheet) {
         const when = document.createElement('small'); when.textContent = p.when;
         name.append(strong, when);
         a.append(avatar(p), name);
-        if (p.liked) a.append(Object.assign(document.createElement('span'), { className: 'viewer-heart', textContent: '♥', title: 'Gostou' }));
+        if (p.liked) a.append(Object.assign(document.createElement('span'), { className: 'viewer-heart', textContent: '🔥', title: 'Reagiu com fogo' }));
         li.append(a);
         return li;
       }));

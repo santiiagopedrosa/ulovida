@@ -18,14 +18,14 @@
 <div class="story-viewer" data-start="<%= start %>" data-mine="<%= mine ? 1 : 0 %>">
   <div class="story-bars"><% for (const st of stories) { %><span><i></i></span><% } %></div>
   <header class="story-head">
-    <a href="/u/<%= user.id %>" class="story-user"><%- include('partials/avatar', { u: user }) %><strong><%= user.name %></strong></a>
+    <a href="/u/<%= user.id %>" class="story-user"><%- include('partials/avatar', { u: user }) %><strong><%= user.name %></strong><%- include('partials/seal') %></a>
     <span class="story-time"></span>
     <a href="/eventos" class="story-close" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></a>
   </header>
   <% stories.forEach((st, i) => { %>
     <figure class="story-slide" data-id="<%= st.id %>" data-time="<%= timeAgo(st.created_at) %>" data-views="<%= st.views %>" data-likes="<%= st.likes %>" data-liked="<%= st.liked ? 1 : 0 %>"
       <% if (st.music_preview) { %>data-music="<%= st.music_preview %>" data-music-title="<%= st.music_title %>" data-music-artist="<%= st.music_artist %>" data-music-artwork="<%= st.music_artwork || '' %>" data-music-url="<%= st.music_url || '' %>" data-music-start="<%= st.music_start || 0 %>"<% } %> hidden>
-      <img src="/img/<%= st.image_id %>" alt="Story de <%= user.name %>" <%= i === start ? '' : 'loading="lazy"' %>>
+      <img src="/img/<%= st.image_id %>" alt="Momento de <%= user.name %>" <%= i === start ? '' : 'loading="lazy"' %>>
     </figure>
   <% }) %>
   <a class="story-music" target="_blank" rel="noopener" hidden title="Ouvir na Apple Music"><img alt=""><span><strong></strong><small></small></span></a>
@@ -36,7 +36,7 @@
   <button class="story-nav next" aria-label="Seguinte"></button>
   <% if (mine) { %>
     <footer class="story-foot">
-      <button type="button" class="story-views" aria-haspopup="dialog"><%- include('partials/icon', { name: 'eye' }) %> <b></b><span class="story-likes"><%- include('partials/icon', { name: 'heart' }) %> <i></i></span></button>
+      <button type="button" class="story-views" aria-haspopup="dialog"><%- include('partials/icon', { name: 'eye' }) %> <b></b><span class="story-likes"><%- include('partials/icon', { name: 'flame' }) %> <i></i></span></button>
       <form method="post" class="story-delete"><button class="btn small danger"><%- include('partials/icon', { name: 'trash' }) %> Apagar</button></form>
     </footer>
     <dialog class="viewers-sheet" aria-label="Quem viu">
@@ -46,10 +46,10 @@
   <% } else { %>
     <footer class="story-foot reply">
       <form class="story-reply" autocomplete="off">
-        <input name="body" maxlength="1000" placeholder="Responder a <%= user.name.split(' ')[0] %>…" aria-label="Responder à story" enterkeyhint="send">
+        <input name="body" maxlength="1000" placeholder="Responder a <%= user.name.split(' ')[0] %>…" aria-label="Responder ao momento" enterkeyhint="send">
         <button type="submit" class="story-send" aria-label="Enviar" hidden><%- include('partials/icon', { name: 'send' }) %></button>
       </form>
-      <button type="button" class="story-like" aria-pressed="false" aria-label="Gosto"><%- include('partials/icon', { name: 'heart' }) %></button>
+      <button type="button" class="story-like" aria-pressed="false" aria-label="Reagir com fogo"><%- include('partials/icon', { name: 'flame' }) %></button>
     </footer>
     <p class="story-toast" role="status" hidden></p>
   <% } %>

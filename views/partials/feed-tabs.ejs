@@ -1,0 +1,5 @@
+<nav class="tabs scroll" aria-label="Separadores">
+  <% for (const [key, href, label] of [['', '/eventos', 'Todos'], ['convivio', '/eventos?tipo=convivio', 'Convívios'], ['pre', '/eventos?tipo=pre', 'Prés'], ['bocas', '/bocas', 'Bocas']]) { %>
+    <a href="<%= href %>" class="<%= active === key ? 'on' : '' %>" <%- active === key ? 'aria-current="page"' : '' %>><%= label %><% if (key === 'bocas') { %> <span class="tab-new">novo</span><% } %><% if (active === key) { %><i class="tab-line" aria-hidden="true"></i><% } %></a>
+  <% } %>
+</nav>

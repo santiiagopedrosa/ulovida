@@ -83,6 +83,13 @@ function timeAgo(ms) {
   if (min < 24 * 60) return `há ${Math.floor(min / 60)} h`;
   return new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'short', timeZone: 'Europe/Lisbon' }).format(ms);
 }
+// Cartão de membro: número (pelo id, por ordem de entrada) e mês de entrada.
+const memberNo = (id) => String(id).padStart(4, '0');
+const memberSince = (createdAt) => {
+  const d = new Date(String(createdAt).replace(' ', 'T') + 'Z');
+  const month = new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: 'Europe/Lisbon' }).format(d).replace('.', '');
+  return `${month} ${d.getUTCFullYear()}`;
+};
 const timeFmt = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
 const fmtTime = (ms) => timeFmt.format(ms);
 
@@ -152,7 +159,7 @@ app.use(async (req, res, next) => {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
     unreadCount: req.me ? (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n : 0,
-    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime,
+    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince,
     path: req.path,
     error: null,
   });
@@ -184,7 +191,11 @@ const deleteImage = (id) => id && db.run('DELETE FROM images WHERE id = ?', id);
 const requireAdmin = (req, res, next) => (req.me?.is_admin ? next() : res.status(403).render('message', { title: 'Sem acesso', heading: 'Sem acesso', text: 'Esta página é só para o administrador.' }));
 
 // ---------- público: registo e login ----------
-app.get('/', (req, res) => (req.me ? res.redirect('/eventos') : res.render('home', { title: 'Bem-vindo' })));
+app.get('/', async (req, res) => {
+  if (req.me) return res.redirect('/eventos');
+  const { n } = await db.get('SELECT COUNT(*) AS n FROM users');
+  res.render('home', { title: 'Bem-vindo', memberCount: n });
+});
 
 app.get('/registar', (req, res) => res.render('registar', { title: 'Registar', email: str(req.query.email, 120) }));
 
@@ -358,6 +369,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
   const tipo = TIPOS[req.query.tipo] ? req.query.tipo : '';
   const events = await db.all(`SELECT e.*, u.name AS creator_name,
                 (SELECT COUNT(*) FROM event_attendees a WHERE a.event_id = e.id) AS going,
+                (SELECT COUNT(*) FROM comments c WHERE c.target_type = 'event' AND c.target_id = e.id) AS comments,
                 EXISTS (SELECT 1 FROM event_attendees a WHERE a.event_id = e.id AND a.user_id = ?) AS im_going
               FROM events e JOIN users u ON u.id = e.creator_id
               WHERE e.status = 'approved' AND e.starts_at >= ? AND (? = '' OR e.type = ?) AND ${visibleTo(req.me.id)}
@@ -371,6 +383,8 @@ app.get('/eventos', requireAuth, async (req, res) => {
   // Barra de stories: as minhas e as de quem eu sigo, primeiro as que ainda não vi.
   const me = Number(req.me.id);
   const stories = await db.all(`SELECT u.id, u.name, u.photo_id, MAX(s.created_at) AS last,
+                                  (SELECT s2.image_id FROM stories s2 WHERE s2.user_id = u.id AND s2.expires_at > ${Date.now()}
+                                   ORDER BY s2.created_at DESC LIMIT 1) AS cover,
                                   SUM(CASE WHEN v.user_id IS NULL THEN 1 ELSE 0 END) AS unseen
                                 FROM stories s JOIN users u ON u.id = s.user_id
                                 LEFT JOIN story_views v ON v.story_id = s.id AND v.user_id = ${me}
@@ -460,6 +474,108 @@ app.post('/eventos/:id/cancelar', requireAuth, async (req, res) => {
   res.redirect('/eventos');
 });
 
+// ---------- bocas (publicações curtas) e comentários ----------
+const BOCA_MAX = 280;
+const COMMENT_MAX = 500;
+// Intervalo mínimo entre publicações da mesma pessoa, contra spam.
+const lastWrite = new Map();
+function tooSoon(userId, kind, ms) {
+  const key = `${kind}:${userId}`, now = Date.now();
+  if (now - (lastWrite.get(key) || 0) < ms) return true;
+  lastWrite.set(key, now);
+  return false;
+}
+const wantsJson = (req) => (req.get('accept') || '').includes('application/json');
+const backTo = (req, fallback) => {
+  const v = String(req.body.voltar || '');
+  return v.startsWith('/') && !v.startsWith('//') ? v : fallback;
+};
+const commentsFor = (type, id) => db.all(`SELECT c.id, c.body, c.created_at, c.user_id, u.name, u.photo_id, u.school
+  FROM comments c JOIN users u ON u.id = c.user_id WHERE c.target_type = ? AND c.target_id = ? ORDER BY c.id`, type, id);
+const bocaSelect = (meId) => `SELECT p.*, u.name, u.photo_id, u.school, u.course,
+    (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS fogos,
+    EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ${Number(meId)}) AS my_fogo,
+    (SELECT COUNT(*) FROM comments c WHERE c.target_type = 'post' AND c.target_id = p.id) AS comments
+  FROM posts p JOIN users u ON u.id = p.user_id`;
+
+app.get('/bocas', requireAuth, async (req, res) => {
+  const bocas = await db.all(`${bocaSelect(req.me.id)} ORDER BY p.id DESC LIMIT 60`);
+  res.render('bocas', { title: 'Bocas', bocas, max: BOCA_MAX, body: '' });
+});
+
+app.post('/bocas', requireAuth, async (req, res) => {
+  const body = str(req.body.body, BOCA_MAX + 20);
+  const fail = async (error) => res.status(400).render('bocas', {
+    title: 'Bocas', bocas: await db.all(`${bocaSelect(req.me.id)} ORDER BY p.id DESC LIMIT 60`), max: BOCA_MAX, body, error });
+  if (!body) return fail('Escreve alguma coisa.');
+  if (body.length > BOCA_MAX) return fail(`Máximo de ${BOCA_MAX} caracteres.`);
+  if (tooSoon(req.me.id, 'boca', 15_000)) return fail('Calma! Espera uns segundos antes de mandar outra boca.');
+  const { lastInsertRowid } = await db.run('INSERT INTO posts (user_id, body, created_at) VALUES (?, ?, ?)', req.me.id, body, Date.now());
+  res.redirect(`/bocas#b${lastInsertRowid}`);
+});
+
+app.get('/bocas/:id', requireAuth, async (req, res, next) => {
+  const boca = await db.get(`${bocaSelect(req.me.id)} WHERE p.id = ?`, req.params.id);
+  if (!boca) return next();
+  res.render('boca', { title: `Boca de ${boca.name}`, boca, comments: await commentsFor('post', boca.id), max: COMMENT_MAX });
+});
+
+app.post('/bocas/:id/fogo', requireAuth, async (req, res) => {
+  const boca = await db.get('SELECT id FROM posts WHERE id = ?', req.params.id);
+  if (!boca) return wantsJson(req) ? res.status(404).json({}) : res.redirect('/bocas');
+  const del = await db.run('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?', boca.id, req.me.id);
+  if (!del.changes) await db.run('INSERT INTO post_likes (post_id, user_id, created_at) VALUES (?, ?, ?)', boca.id, req.me.id, Date.now());
+  const { n } = await db.get('SELECT COUNT(*) AS n FROM post_likes WHERE post_id = ?', boca.id);
+  if (wantsJson(req)) return res.json({ on: !del.changes, fogos: n });
+  res.redirect(backTo(req, `/bocas#b${boca.id}`));
+});
+
+app.post('/bocas/:id/apagar', requireAuth, async (req, res) => {
+  const boca = await db.get('SELECT id, user_id FROM posts WHERE id = ?', req.params.id);
+  if (boca && (boca.user_id === req.me.id || req.me.is_admin)) {
+    await db.run("DELETE FROM comments WHERE target_type = 'post' AND target_id = ?", boca.id);
+    await db.run('DELETE FROM post_likes WHERE post_id = ?', boca.id);
+    await db.run('DELETE FROM posts WHERE id = ?', boca.id);
+  }
+  res.redirect('/bocas');
+});
+
+// Página de um evento, com comentários (só para quem o pode ver).
+app.get('/eventos/:id', requireAuth, async (req, res, next) => {
+  if (!/^\d+$/.test(req.params.id)) return next();
+  const e = await db.get(`SELECT e.*, u.name AS creator_name,
+      (SELECT COUNT(*) FROM event_attendees a WHERE a.event_id = e.id) AS going,
+      EXISTS (SELECT 1 FROM event_attendees a WHERE a.event_id = e.id AND a.user_id = ?) AS im_going
+    FROM events e JOIN users u ON u.id = e.creator_id
+    WHERE e.id = ? AND e.status = 'approved' AND ${visibleTo(req.me.id)}`, req.me.id, req.params.id);
+  if (!e) return next();
+  e.attendees = await db.all(`SELECT u.id, u.name, u.photo_id FROM event_attendees a JOIN users u ON u.id = a.user_id WHERE a.event_id = ? LIMIT 12`, e.id);
+  res.render('evento', { title: e.title, e, comments: await commentsFor('event', e.id), max: COMMENT_MAX });
+});
+
+// Comentar numa boca ou num evento.
+for (const [route, type, find] of [
+  ['bocas', 'post', (req) => db.get('SELECT id FROM posts WHERE id = ?', req.params.id)],
+  ['eventos', 'event', (req) => db.get(`SELECT e.id FROM events e WHERE e.id = ? AND e.status = 'approved' AND ${visibleTo(req.me.id)}`, req.params.id)],
+]) {
+  app.post(`/${route}/:id/comentar`, requireAuth, async (req, res) => {
+    const target = await find(req);
+    if (!target) return res.redirect(`/${route}`);
+    const body = str(req.body.body, COMMENT_MAX);
+    if (body && !tooSoon(req.me.id, 'comment', 4000)) {
+      await db.run('INSERT INTO comments (user_id, target_type, target_id, body, created_at) VALUES (?, ?, ?, ?, ?)', req.me.id, type, target.id, body, Date.now());
+    }
+    res.redirect(`/${route}/${target.id}#comentarios`);
+  });
+}
+
+app.post('/comentarios/:id/apagar', requireAuth, async (req, res) => {
+  const c = await db.get('SELECT id, user_id, target_type, target_id FROM comments WHERE id = ?', req.params.id);
+  if (!c) return res.redirect('/eventos');
+  if (c.user_id === req.me.id || req.me.is_admin) await db.run('DELETE FROM comments WHERE id = ?', c.id);
+  res.redirect(`/${c.target_type === 'post' ? 'bocas' : 'eventos'}/${c.target_id}#comentarios`);
+});
+
 // ---------- seguir ----------
 app.post('/u/:id/seguir', requireAuth, async (req, res) => {
   const user = await db.get('SELECT id FROM users WHERE id = ?', req.params.id);
@@ -489,7 +605,7 @@ for (const [route, label, sql] of [
 const canSeeStoriesOf = async (meId, userId) =>
   meId === userId || Boolean(await db.get('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?', meId, userId));
 
-app.get('/stories/nova', requireAuth, (req, res) => res.render('story-nova', { title: 'Nova story' }));
+app.get('/stories/nova', requireAuth, (req, res) => res.render('story-nova', { title: 'Novo momento' }));
 
 // Pesquisa de músicas para as stories (API pública do iTunes; só dá excertos de 30 s).
 app.get('/musica', requireAuth, async (req, res) => {
@@ -518,7 +634,7 @@ const appleUrl = (v, hosts) => {
 
 app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
   const wantsJson = (req.get('accept') || '').includes('application/json');
-  const fail = (error) => (wantsJson ? res.status(400).json({ error }) : res.status(400).render('story-nova', { title: 'Nova story', error }));
+  const fail = (error) => (wantsJson ? res.status(400).json({ error }) : res.status(400).render('story-nova', { title: 'Novo momento', error }));
   if (req.uploadError) return fail(req.uploadError);
   if (!req.file) return fail('Escolhe uma foto.');
   let imageId;
@@ -545,7 +661,7 @@ app.get('/stories/:userId', requireAuth, async (req, res) => {
   if (!stories.length) return res.redirect('/eventos');
   // Começa na primeira que ainda não foi vista.
   const start = Math.max(0, stories.findIndex((st) => !st.seen));
-  res.render('story', { title: `Stories · ${user.name}`, user, stories, start, mine: user.id === req.me.id });
+  res.render('story', { title: `Momentos · ${user.name}`, user, stories, start, mine: user.id === req.me.id });
 });
 
 app.post('/stories/:id/visto', requireAuth, async (req, res) => {
@@ -564,7 +680,7 @@ async function othersStory(meId, storyId) {
 
 app.post('/stories/:id/gosto', requireAuth, async (req, res) => {
   const st = await othersStory(req.me.id, req.params.id);
-  if (!st) return res.status(404).json({ error: 'Story não encontrada.' });
+  if (!st) return res.status(404).json({ error: 'Momento não encontrado.' });
   const del = await db.run('DELETE FROM story_likes WHERE story_id = ? AND user_id = ?', st.id, req.me.id);
   if (!del.changes) await db.run('INSERT INTO story_likes (story_id, user_id, created_at) VALUES (?, ?, ?)', st.id, req.me.id, Date.now());
   res.json({ liked: !del.changes });
@@ -581,7 +697,7 @@ app.post('/stories/:id/responder', requireAuth, async (req, res) => {
 // Lista de quem viu (só para quem publicou), com quem deu gosto.
 app.get('/stories/:id/vistas', requireAuth, async (req, res) => {
   const st = await db.get('SELECT id FROM stories WHERE id = ? AND user_id = ?', req.params.id, req.me.id);
-  if (!st) return res.status(404).json({ error: 'Story não encontrada.' });
+  if (!st) return res.status(404).json({ error: 'Momento não encontrado.' });
   const rows = await db.all(`SELECT u.id, u.name, u.photo_id, v.viewed_at,
                                EXISTS (SELECT 1 FROM story_likes l WHERE l.story_id = v.story_id AND l.user_id = u.id) AS liked
                              FROM story_views v JOIN users u ON u.id = v.user_id

@@ -1,0 +1,6 @@
+<%- include('partials/header') %>
+<p class="muted small back-link"><a href="/bocas">← Bocas</a></p>
+<%- include('partials/boca', { b: boca, big: true }) %>
+<%- include('partials/comments', { comments, action: `/bocas/${boca.id}/comentar`, max }) %>
+<script src="/bocas.js" defer></script>
+<%- include('partials/footer') %>
