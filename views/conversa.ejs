@@ -4,7 +4,7 @@
 <section class="chat" data-other="<%= other.id %>" data-other-name="<%= other.name.split(' ')[0] %>" data-last="<%= messages.length ? messages.at(-1).id : 0 %>">
   <header class="chat-head">
     <a href="/mensagens" class="icon-btn" aria-label="Voltar às mensagens">←</a>
-    <a href="/u/<%= other.id %>" class="chat-user"><%- include('partials/avatar', { u: other }) %><span><strong><%= other.name %> <%- include('partials/seal') %></strong><span class="muted small"><%= other.course %></span></span></a>
+    <a href="/u/<%= other.id %>" class="chat-user"><%- include('partials/avatar', { u: other }) %><span><strong><%= other.name %> <%- include('partials/badges', { id: other.id }) %></strong><span class="muted small"><%= other.course %></span></span></a>
   </header>
   <div class="chat-log" aria-live="polite">
     <% for (const m of messages) { %>

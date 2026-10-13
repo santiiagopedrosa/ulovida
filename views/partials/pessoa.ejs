@@ -1,7 +1,7 @@
 <a class="person" href="/u/<%= p.id %>">
   <%- include('avatar', { u: p, vt: locals.vt }) %>
   <div>
-    <strong><%= p.name %> <%- include('seal') %></strong>
+    <strong><%= p.name %> <%- include('badges', { id: p.id }) %></strong>
     <div class="muted small"><%= [p.school, p.course, p.year].filter(Boolean).join(' · ') %></div>
     <% if (p.praxe || p.relationship) { %>
     <div class="tags">

@@ -18,7 +18,7 @@
 <div class="story-viewer" data-start="<%= start %>" data-mine="<%= mine ? 1 : 0 %>">
   <div class="story-bars"><% for (const st of stories) { %><span><i></i></span><% } %></div>
   <header class="story-head">
-    <a href="/u/<%= user.id %>" class="story-user"><%- include('partials/avatar', { u: user }) %><strong><%= user.name %></strong><%- include('partials/seal') %></a>
+    <a href="/u/<%= user.id %>" class="story-user"><%- include('partials/avatar', { u: user }) %><strong><%= user.name %></strong><%- include('partials/badges', { id: user.id }) %></a>
     <span class="story-time"></span>
     <a href="/eventos" class="story-close" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></a>
   </header>

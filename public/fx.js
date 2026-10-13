@@ -39,6 +39,16 @@ if (!calm) {
   });
 }
 
+// Momentos: o "Novo" desaparece logo ao abrir; ao voltar atrás a página já vem sem ele.
+for (const m of document.querySelectorAll('.moment.new')) {
+  m.addEventListener('click', () => {
+    m.classList.replace('new', 'seen');
+    m.querySelector('.moment-new')?.remove();
+  });
+}
+// Se o browser repuser a página da memória (botão voltar), recarrega para os momentos ficarem certos.
+addEventListener('pageshow', (e) => { if (e.persisted && document.querySelector('.moments')) location.reload(); });
+
 // Cartão de membro: inclina com o rato/dedo e o brilho segue o ponteiro.
 for (const card of document.querySelectorAll('[data-tilt]')) {
   if (calm) break;

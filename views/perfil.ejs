@@ -6,7 +6,7 @@
     <%- include('partials/avatar', { u: user, big: true, vt: true }) %>
   <% } %>
   <div class="profile-main">
-    <h1><%= user.name %> <%- include('partials/seal') %></h1>
+    <h1><%= user.name %> <%- include('partials/badges', { id: user.id }) %></h1>
     <p class="muted"><%= [user.school, user.course, user.year].filter(Boolean).join(' · ') %></p>
     <div class="counts">
       <a href="/u/<%= user.id %>/seguidores"><strong><%= followers %></strong> <%= followers === 1 ? 'seguidor' : 'seguidores' %></a>
@@ -15,6 +15,7 @@
     </div>
     <div class="facts">
       <div><span class="label">Praxe</span><%= PRAXE[user.praxe] || '—' %></div>
+      <% if (user.praxe_name && user.praxe !== 'nao') { %><div><span class="label">Nome de praxe</span><%= user.praxe_name %></div><% } %>
       <div><span class="label">Relação</span><%= RELACAO[user.relationship] || '—' %></div>
       <% if (user.instagram) { %>
         <div><span class="label">Instagram</span><a href="https://instagram.com/<%= user.instagram %>" target="_blank" rel="noopener">@<%= user.instagram %></a></div>

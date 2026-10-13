@@ -183,8 +183,11 @@ const migrations = [
   ['messages', 'story_id', 'INTEGER'],
   // Imagem opcional numa boca.
   ['posts', 'image_id', 'INTEGER'],
+  ['users', 'praxe_name', "TEXT NOT NULL DEFAULT ''"],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);
   if (!rows.length) await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }
+// "Praxista" deixou de ser opção: passa a "Doutor/a".
+await client.execute("UPDATE users SET praxe = 'doutor' WHERE praxe = 'praxista'");

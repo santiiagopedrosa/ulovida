@@ -685,14 +685,14 @@ h1 .seal { width: .6em; height: .6em; vertical-align: .05em; }
 /* Eventos como bilhetes: talão colorido, picotado e recortes; carimbo "CONFIRMADO" ao dizer "Vou" */
 .list { border-top: 0; }
 .tabs + .list { padding-top: 18px; }
-.event { position: relative; grid-template-columns: 96px 1fr; gap: 0; padding: 0; margin: 0 0 18px; border: 0; border-radius: 14px; background: var(--card); box-shadow: 0 10px 26px rgb(0 0 0 / .2); }
+.event { position: relative; grid-template-columns: 80px 1fr; gap: 0; padding: 0; margin: 0 0 18px; border: 0; border-radius: 14px; background: var(--card); box-shadow: 0 10px 26px rgb(0 0 0 / .2); }
 /* Meias-luas recortadas onde o bilhete se rasgaria */
-.event::before, .event::after { content: ""; position: absolute; z-index: 2; left: 96px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--bg); }
+.event::before, .event::after { content: ""; position: absolute; z-index: 2; left: 80px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--bg); }
 .event::before { top: -11px; }
 .event::after { bottom: -11px; }
-.date { position: relative; align-self: stretch; padding: 18px 14px; border-radius: 14px 0 0 14px; }
+.date { position: relative; align-self: start; padding: 14px 12px 16px; border-radius: 14px 0 12px 0; }
 /* Picotado: furinhos da cor do fundo ao longo do talão */
-.date::after { content: ""; position: absolute; top: 16px; bottom: 16px; right: -2px; border-right: 4px dotted var(--bg); }
+.event-body { border-left: 2px dashed var(--line-strong); }
 .event-body { padding: 18px 20px 18px 24px; }
 .event-detail { margin-bottom: 8px; }
 
@@ -708,9 +708,9 @@ article.event:target { animation: ticket-thud .4s var(--ease) .6s; border-radius
 @keyframes stamp-drop { 0% { opacity: 0; scale: 3.2; rotate: 8deg; } 55% { opacity: .95; scale: .9; rotate: -17deg; } 78% { scale: 1.05; } 100% { scale: 1; rotate: -14deg; } }
 @keyframes ticket-thud { 0%, 100% { transform: none; } 30% { transform: translateY(4px) scale(.99); } 65% { transform: translateY(-1px); } }
 @media (max-width: 480px) {
-  .event { grid-template-columns: 72px 1fr; }
-  .event::before, .event::after { left: 72px; }
-  .date { padding: 14px 10px; }
+  .event { grid-template-columns: 64px 1fr; }
+  .event::before, .event::after { left: 64px; }
+  .date { padding: 12px 9px 14px; }
   .event-body { padding: 14px 14px 14px 18px; }
   .stamp { right: 10px; font-size: .78rem; padding: 4px 10px; }
 }
@@ -833,6 +833,29 @@ article.event:target { animation: ticket-thud .4s var(--ease) .6s; border-radius
 .composer-photo-del { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgb(0 0 0 / .6); color: #fff; cursor: pointer; }
 .composer-img { margin-right: auto; color: var(--yellow); }
 .composer-img .icon { width: 22px; height: 22px; }
+
+/* ---------- equipa do ULOO (CEO / COO) ---------- */
+.role-badge {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; vertical-align: .12em;
+  padding: 2px 7px 2px 5px; border-radius: 99px; background: linear-gradient(135deg, #f7d774, #e2a93b 55%, #f7e39a); color: #3a2600;
+  font: 900 .62rem/1.4 var(--font-display); letter-spacing: .08em; box-shadow: 0 0 0 1px rgb(255 255 255 / .25) inset, 0 2px 8px rgb(226 169 59 / .35);
+}
+.role-badge svg { width: 11px; height: 11px; }
+.role-badge::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .7) 50%, transparent 70%); transform: translateX(-120%); animation: role-shine 3.5s ease-in-out infinite 1s; }
+@keyframes role-shine { 0%, 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+h1 .role-badge { font-size: .3em; padding: 3px 10px 3px 8px; vertical-align: .55em; }
+h1 .role-badge svg { width: 1.2em; height: 1.2em; }
+
+/* Cartão de fundador: preto com dourado */
+.member-card.founder { --tone: #111; background: radial-gradient(120% 140% at 0% 0%, #2b2b2b, #0c0c0c 60%); color: #f0d48a; box-shadow: 0 18px 40px rgb(0 0 0 / .5), inset 0 0 0 1px rgb(240 212 138 / .35); }
+.member-card.founder::before { background: repeating-linear-gradient(135deg, rgb(240 212 138 / .06) 0 2px, transparent 2px 9px); }
+.member-card.founder .mc-brand i { background: #f0d48a; }
+.member-card.founder .mc-kind { color: #f0d48a; opacity: 1; }
+.member-card.founder .mc-bottom { border-top-color: rgb(240 212 138 / .35); }
+.member-card.founder .seal { color: #f0d48a; --seal-check: #111; }
+.member-card.founder .mc-shine { background: radial-gradient(circle at var(--mx) var(--my), rgb(255 230 160 / .45), transparent 45%); mix-blend-mode: screen; }
+.member-card.founder .mc-name { background: linear-gradient(100deg, #f7e39a, #d9a640 45%, #fff3c4 60%, #d9a640); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.member-card.founder .mc-name .seal, .member-card.founder .mc-name .role-badge { -webkit-text-fill-color: initial; }
 
 /* ---------- animações ---------- */
 /* Passagem suave entre páginas (Chrome, Edge e Safari recentes; nos outros a página muda normalmente). */

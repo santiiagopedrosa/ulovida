@@ -19,7 +19,7 @@ const CODE_TTL_MS = 15 * 60 * 1000;
 const CODE_MAX_ATTEMPTS = 5;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-export const PRAXE = { caloiro: 'Caloiro/a', praxista: 'Praxista', veterano: 'Veterano/a', nao: 'Não faço praxe' };
+export const PRAXE = { caloiro: 'Caloiro/a', semidoutor: 'Semi-doutor/a', doutor: 'Doutor/a', veterano: 'Veterano/a', nao: 'Não faço praxe' };
 export const RELACAO = { solteiro: 'Solteiro/a', namorar: 'A namorar', complicado: 'É complicado' };
 const ANOS = ['1º ano', '2º ano', '3º ano', '4º ano', '5º ano', 'Mestrado', 'Doutoramento'];
 const TIPOS = { convivio: 'Convívio', pre: 'Pré' };
@@ -85,6 +85,9 @@ function timeAgo(ms) {
 }
 // Cartão de membro: número (pelo id, por ordem de entrada) e mês de entrada.
 const memberNo = (id) => String(id).padStart(4, '0');
+// Equipa do ULOO: aparece com etiqueta própria e cartão de fundador.
+const STAFF = { 1: 'CEO', 2: 'COO' };
+const staffRole = (id) => STAFF[Number(id)] || null;
 const memberSince = (createdAt) => {
   const d = new Date(String(createdAt).replace(' ', 'T') + 'Z');
   const month = new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: 'Europe/Lisbon' }).format(d).replace('.', '');
@@ -159,7 +162,7 @@ app.use(async (req, res, next) => {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
     unreadCount: req.me ? (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n : 0,
-    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince,
+    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince, staffRole,
     path: req.path,
     error: null,
   });
@@ -340,6 +343,7 @@ app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
     year: str(req.body.year, 20),
     bio: str(req.body.bio, 500),
     praxe: str(req.body.praxe, 20),
+    praxe_name: str(req.body.praxe_name, 40),
     relationship: str(req.body.relationship, 20),
     instagram: str(req.body.instagram, 31).replace(/^@/, ''),
     photo_id: req.me.photo_id,
@@ -350,6 +354,8 @@ app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
   if (!validCourse(form.school, form.course)) return fail('Escolhe o teu curso da lista.');
   if (!ANOS.includes(form.year)) return fail('Escolhe o teu ano.');
   if (form.praxe && !PRAXE[form.praxe]) return fail('Opção de praxe inválida.');
+  // O nome de praxe só faz sentido para quem faz praxe.
+  if (!form.praxe || form.praxe === 'nao') form.praxe_name = '';
   if (form.relationship && !RELACAO[form.relationship]) return fail('Opção de relação inválida.');
   if (form.instagram && !/^[A-Za-z0-9._]{1,30}$/.test(form.instagram)) return fail('Instagram inválido.');
   if (req.uploadError) return fail(req.uploadError);
@@ -358,8 +364,8 @@ app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
   if (req.file) {
     try { photoId = await saveImage(req.file, 'avatar'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
   }
-  await db.run(`UPDATE users SET name = ?, school = ?, course = ?, year = ?, bio = ?, praxe = ?, relationship = ?, instagram = ?, photo_id = ? WHERE id = ?`,
-    form.name, form.school, form.course, form.year, form.bio, form.praxe, form.relationship, form.instagram, photoId, req.me.id);
+  await db.run(`UPDATE users SET name = ?, school = ?, course = ?, year = ?, bio = ?, praxe = ?, praxe_name = ?, relationship = ?, instagram = ?, photo_id = ? WHERE id = ?`,
+    form.name, form.school, form.course, form.year, form.bio, form.praxe, form.praxe_name, form.relationship, form.instagram, photoId, req.me.id);
   if (photoId !== req.me.photo_id) await deleteImage(req.me.photo_id);
   res.redirect(`/u/${req.me.id}`);
 });
@@ -385,7 +391,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
   const stories = await db.all(`SELECT u.id, u.name, u.photo_id, MAX(s.created_at) AS last,
                                   (SELECT s2.image_id FROM stories s2 WHERE s2.user_id = u.id AND s2.expires_at > ${Date.now()}
                                    ORDER BY s2.created_at DESC LIMIT 1) AS cover,
-                                  SUM(CASE WHEN v.user_id IS NULL THEN 1 ELSE 0 END) AS unseen
+                                  SUM(CASE WHEN v.user_id IS NULL AND s.user_id != ${me} THEN 1 ELSE 0 END) AS unseen
                                 FROM stories s JOIN users u ON u.id = s.user_id
                                 LEFT JOIN story_views v ON v.story_id = s.id AND v.user_id = ${me}
                                 WHERE s.expires_at > ? AND (s.user_id = ${me} OR s.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ${me}))

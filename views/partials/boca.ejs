@@ -2,7 +2,7 @@
   <a href="/u/<%= b.user_id %>" class="boca-avatar"><%- include('avatar', { u: { id: b.user_id, name: b.name, photo_id: b.photo_id } }) %></a>
   <div class="boca-main">
     <div class="boca-head">
-      <a href="/u/<%= b.user_id %>"><strong><%= b.name %></strong></a> <%- include('seal') %>
+      <a href="/u/<%= b.user_id %>"><strong><%= b.name %></strong></a> <%- include('badges', { id: b.user_id }) %>
       <span class="muted small"><%= b.school || 'ULO' %> · <%= timeAgo(b.created_at) %></span>
     </div>
     <% if (b.body) { %><% if (locals.big) { %><p class="boca-text"><%= b.body %></p><% } else { %><a class="boca-text" href="/bocas/<%= b.id %>"><%= b.body %></a><% } %><% } %>
