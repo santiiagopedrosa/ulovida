@@ -480,14 +480,45 @@ const canSeeStoriesOf = async (meId, userId) =>
 
 app.get('/stories/nova', requireAuth, (req, res) => res.render('story-nova', { title: 'Nova story' }));
 
+// Pesquisa de músicas para as stories (API pública do iTunes; só dá excertos de 30 s).
+app.get('/musica', requireAuth, async (req, res) => {
+  const q = str(req.query.q, 80);
+  if (q.length < 2) return res.json([]);
+  try {
+    const r = await fetch(`https://itunes.apple.com/search?${new URLSearchParams({ term: q, media: 'music', entity: 'song', limit: '20', country: 'PT' })}`,
+      { signal: AbortSignal.timeout(6000) });
+    const { results = [] } = await r.json();
+    res.json(results.filter((t) => t.previewUrl).map((t) => ({
+      title: t.trackName, artist: t.artistName, preview: t.previewUrl,
+      artwork: (t.artworkUrl100 || '').replace('100x100bb', '200x200bb'), url: t.trackViewUrl,
+    })));
+  } catch {
+    res.status(502).json({ error: 'Não foi possível pesquisar músicas agora.' });
+  }
+});
+
+// Só aceita links da Apple (não deixa meter URLs arbitrários na story).
+const appleUrl = (v, hosts) => {
+  try {
+    const u = new URL(String(v || ''));
+    return u.protocol === 'https:' && hosts.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`)) ? u.href.slice(0, 500) : null;
+  } catch { return null; }
+};
+
 app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
-  const fail = (error) => res.status(400).render('story-nova', { title: 'Nova story', error });
+  const wantsJson = (req.get('accept') || '').includes('application/json');
+  const fail = (error) => (wantsJson ? res.status(400).json({ error }) : res.status(400).render('story-nova', { title: 'Nova story', error }));
   if (req.uploadError) return fail(req.uploadError);
   if (!req.file) return fail('Escolhe uma foto.');
   let imageId;
   try { imageId = await saveImage(req.file, 'story'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
   const now = Date.now();
-  await db.run('INSERT INTO stories (user_id, image_id, created_at, expires_at) VALUES (?, ?, ?, ?)', req.me.id, imageId, now, now + STORY_TTL_MS);
+  const preview = appleUrl(req.body.music_preview, ['apple.com']);
+  const music = preview ? [str(req.body.music_title, 120), str(req.body.music_artist, 120), preview,
+    appleUrl(req.body.music_artwork, ['mzstatic.com']), appleUrl(req.body.music_url, ['apple.com'])] : [null, null, null, null, null];
+  await db.run(`INSERT INTO stories (user_id, image_id, created_at, expires_at, music_title, music_artist, music_preview, music_artwork, music_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music);
+  if (wantsJson) return res.json({ ok: true, redirect: '/eventos' });
   res.redirect('/eventos');
 });
 
@@ -597,7 +628,7 @@ export default app;
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`ULO Vida a correr em ${APP_URL}`);
+    console.log(`ULOO a correr em ${APP_URL}`);
     if (!ADMIN_EMAIL) console.warn('Aviso: ADMIN_EMAIL não definido — ninguém pode aprovar eventos.');
   });
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= title %> · ULO Vida</title>
+  <title><%= title %> · ULOO</title>
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,10 +18,15 @@
     <a href="/eventos" class="story-close" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></a>
   </header>
   <% stories.forEach((st, i) => { %>
-    <figure class="story-slide" data-id="<%= st.id %>" data-time="<%= timeAgo(st.created_at) %>" data-views="<%= st.views %>" hidden>
+    <figure class="story-slide" data-id="<%= st.id %>" data-time="<%= timeAgo(st.created_at) %>" data-views="<%= st.views %>"
+      <% if (st.music_preview) { %>data-music="<%= st.music_preview %>" data-music-title="<%= st.music_title %>" data-music-artist="<%= st.music_artist %>" data-music-artwork="<%= st.music_artwork || '' %>" data-music-url="<%= st.music_url || '' %>"<% } %> hidden>
       <img src="/img/<%= st.image_id %>" alt="Story de <%= user.name %>" <%= i === start ? '' : 'loading="lazy"' %>>
     </figure>
   <% }) %>
+  <a class="story-music" target="_blank" rel="noopener" hidden title="Ouvir na Apple Music"><img alt=""><span><strong></strong><small></small></span></a>
+  <button type="button" class="story-sound" hidden aria-label="Ligar som"><%- include('partials/icon', { name: 'mute' }) %></button>
+  <template id="icon-volume"><%- include('partials/icon', { name: 'volume' }) %></template>
+  <template id="icon-mute"><%- include('partials/icon', { name: 'mute' }) %></template>
   <button class="story-nav prev" aria-label="Anterior"></button>
   <button class="story-nav next" aria-label="Seguinte"></button>
   <% if (mine) { %>

@@ -1,4 +1,4 @@
-# ULO Vida
+# ULOO
 
 Rede social da universidade, só para emails `@ulo.pt`.
 

@@ -136,6 +136,12 @@ const migrations = [
   ['users', 'school', "TEXT NOT NULL DEFAULT ''"],
   // 'public' (precisa de aprovação), 'mutual' (seguidores mútuos) ou 'selected' (convidados).
   ['events', 'visibility', "TEXT NOT NULL DEFAULT 'public'"],
+  // Música da story (pré-visualização de 30 s da Apple Music).
+  ['stories', 'music_title', 'TEXT'],
+  ['stories', 'music_artist', 'TEXT'],
+  ['stories', 'music_preview', 'TEXT'],
+  ['stories', 'music_artwork', 'TEXT'],
+  ['stories', 'music_url', 'TEXT'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

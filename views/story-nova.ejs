@@ -1,15 +1,59 @@
-<%- include('partials/header') %>
-<section class="panel">
-  <h1>Nova story</h1>
-  <p class="muted">Fica visível durante 24 horas para quem te segue.</p>
-  <form method="post" action="/stories/nova" class="form" enctype="multipart/form-data">
-    <img id="story-preview" class="story-preview" alt="" hidden>
-    <label class="btn ghost file-btn block">
-      <%- include('partials/icon', { name: 'camera' }) %> Escolher foto
-      <input type="file" name="photo" accept="image/*" data-max="1080" data-aspect="9/16" data-preview="story-preview" required>
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title><%= title %> · ULOO</title>
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="story-page cam-page">
+<main class="cam" data-state="camera">
+  <div class="cam-top">
+    <a href="/eventos" class="cam-icon" data-show="camera" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></a>
+    <button type="button" class="cam-icon" data-show="edit" data-act="back" aria-label="Descartar foto"><%- include('partials/icon', { name: 'back' }) %></button>
+    <button type="button" class="cam-pill" data-show="edit" data-act="music"><%- include('partials/icon', { name: 'music' }) %> Música</button>
+  </div>
+
+  <div class="cam-frame">
+    <video playsinline muted autoplay data-show="camera"></video>
+    <canvas class="cam-edit" data-show="edit"></canvas>
+    <p class="cam-error" hidden>Não foi possível abrir a câmara.<br>Escolhe uma foto da galeria.</p>
+    <% if (locals.error) { %><p class="cam-error"><%= error %></p><% } %>
+    <button type="button" class="music-chip" data-show="edit" data-act="music" hidden>
+      <img alt=""><span><strong></strong><small></small></span>
+      <i data-act="remove-music" aria-label="Tirar música"><%- include('partials/icon', { name: 'x' }) %></i>
+    </button>
+  </div>
+
+  <div class="cam-bottom">
+    <label class="cam-gallery" data-show="camera" aria-label="Escolher da galeria">
+      <%- include('partials/icon', { name: 'image' }) %>
+      <input type="file" accept="image/*" hidden>
     </label>
-    <button class="btn block">Publicar story</button>
+    <button type="button" class="cam-shutter" data-show="camera" aria-label="Tirar foto"></button>
+    <button type="button" class="cam-icon" data-show="camera" data-act="flip" aria-label="Virar câmara"><%- include('partials/icon', { name: 'flip' }) %></button>
+    <button type="button" class="btn cam-publish" data-show="edit" data-act="publish">A tua story <%- include('partials/icon', { name: 'arrow' }) %></button>
+  </div>
+
+  <dialog class="music-sheet">
+    <div class="music-head">
+      <input type="search" placeholder="Procurar música ou artista" aria-label="Procurar música" enterkeyhint="search">
+      <button type="button" class="cam-icon dark" data-act="close-music" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></button>
+    </div>
+    <ul class="music-list"><li class="music-hint">Escreve o nome de uma música ou artista.</li></ul>
+    <p class="music-credit">Excertos de 30 s da Apple Music</p>
+  </dialog>
+</main>
+
+<noscript>
+  <form method="post" action="/stories/nova" enctype="multipart/form-data" class="cam-fallback">
+    <input type="file" name="photo" accept="image/*" required>
+    <button class="btn">Publicar story</button>
   </form>
-</section>
-<script src="/upload.js" defer></script>
-<%- include('partials/footer') %>
+</noscript>
+<script src="/story-camera.js" defer></script>
+</body>
+</html>
