@@ -40,7 +40,7 @@
   --font: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
   --font-display: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
   /* Sempre as mesmas cores, com o telemóvel em modo claro ou escuro. */
-  color-scheme: light;
+  color-scheme: only light;
 }
 
 /* ---------- base ---------- */
