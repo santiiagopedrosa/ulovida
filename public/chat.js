@@ -13,6 +13,14 @@ function add(m) {
   const div = document.createElement('div');
   div.className = `bubble${m.mine ? ' mine' : ''}`;
   div.dataset.id = m.id;
+  if (m.story_id) {
+    const ref = document.createElement('span');
+    ref.className = 'bubble-story';
+    ref.textContent = m.mine ? `Respondeste à story de ${chat.dataset.otherName}` : 'Respondeu à tua story';
+    if (m.story_image) ref.append(Object.assign(document.createElement('img'), { src: `/img/${m.story_image}`, alt: 'Story' }));
+    else ref.append(' · expirou');
+    div.append(ref);
+  }
   const text = document.createElement('span');
   text.textContent = m.body;
   const time = document.createElement('time');

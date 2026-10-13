@@ -1,14 +1,14 @@
 <%- include('partials/header') %>
 <div class="dm in-chat">
 <aside class="dm-list"><%- include('partials/conversas', { conversations, activeId: other.id }) %></aside>
-<section class="chat" data-other="<%= other.id %>" data-last="<%= messages.length ? messages.at(-1).id : 0 %>">
+<section class="chat" data-other="<%= other.id %>" data-other-name="<%= other.name.split(' ')[0] %>" data-last="<%= messages.length ? messages.at(-1).id : 0 %>">
   <header class="chat-head">
     <a href="/mensagens" class="icon-btn" aria-label="Voltar às mensagens">←</a>
     <a href="/u/<%= other.id %>" class="chat-user"><%- include('partials/avatar', { u: other }) %><span><strong><%= other.name %></strong><span class="muted small"><%= other.course %></span></span></a>
   </header>
   <div class="chat-log" aria-live="polite">
     <% for (const m of messages) { %>
-      <div class="bubble <%= m.sender_id === me.id ? 'mine' : '' %>" data-id="<%= m.id %>"><span><%= m.body %></span><time><%= fmtTime(m.created_at) %></time></div>
+      <div class="bubble <%= m.sender_id === me.id ? 'mine' : '' %>" data-id="<%= m.id %>"><% if (m.story_id) { %><span class="bubble-story"><%= m.sender_id === me.id ? `Respondeste à story de ${other.name.split(' ')[0]}` : 'Respondeu à tua story' %><% if (m.story_image) { %><img src="/img/<%= m.story_image %>" alt="Story"><% } else { %> · expirou<% } %></span><% } %><span><%= m.body %></span><time><%= fmtTime(m.created_at) %></time></div>
     <% } %>
     <% if (!messages.length) { %><p class="muted small chat-empty">Diz olá a <%= other.name.split(' ')[0] %>.</p><% } %>
     <span id="fim"></span>

@@ -111,6 +111,8 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(import.meta.dirname, 'views'));
 app.use(express.static(path.join(import.meta.dirname, 'public')));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
+// No Express 5, um POST sem corpo deixa req.body indefinido; assim as rotas podem ler campos sem rebentar.
+app.use((req, res, next) => { req.body ??= {}; next(); });
 
 // Proteção CSRF: rejeita POSTs vindos de outros sites.
 app.use((req, res, next) => {
@@ -133,6 +135,7 @@ app.use(async (req, res, next) => {
     const old = await db.all('SELECT id, image_id FROM stories WHERE expires_at < ?', Date.now());
     for (const st of old) {
       await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
+      await db.run('DELETE FROM story_likes WHERE story_id = ?', st.id);
       await db.run('DELETE FROM stories WHERE id = ?', st.id);
       await deleteImage(st.image_id);
     }
@@ -535,6 +538,8 @@ app.get('/stories/:userId', requireAuth, async (req, res) => {
   const user = await db.get('SELECT id, name, photo_id FROM users WHERE id = ?', req.params.userId);
   if (!user || !await canSeeStoriesOf(req.me.id, user.id)) return res.redirect('/eventos');
   const stories = await db.all(`SELECT s.*, (SELECT COUNT(*) FROM story_views v WHERE v.story_id = s.id) AS views,
+                                  (SELECT COUNT(*) FROM story_likes l WHERE l.story_id = s.id) AS likes,
+                                  EXISTS (SELECT 1 FROM story_likes l WHERE l.story_id = s.id AND l.user_id = ${Number(req.me.id)}) AS liked,
                                   EXISTS (SELECT 1 FROM story_views v WHERE v.story_id = s.id AND v.user_id = ?) AS seen
                                 FROM stories s WHERE s.user_id = ? AND s.expires_at > ? ORDER BY s.created_at`, req.me.id, user.id, Date.now());
   if (!stories.length) return res.redirect('/eventos');
@@ -546,15 +551,49 @@ app.get('/stories/:userId', requireAuth, async (req, res) => {
 app.post('/stories/:id/visto', requireAuth, async (req, res) => {
   const st = await db.get('SELECT user_id FROM stories WHERE id = ? AND expires_at > ?', req.params.id, Date.now());
   if (st && st.user_id !== req.me.id && await canSeeStoriesOf(req.me.id, st.user_id)) {
-    await db.run('INSERT OR IGNORE INTO story_views (story_id, user_id) VALUES (?, ?)', req.params.id, req.me.id);
+    await db.run('INSERT OR IGNORE INTO story_views (story_id, user_id, viewed_at) VALUES (?, ?, ?)', req.params.id, req.me.id, Date.now());
   }
   res.status(204).end();
+});
+
+// Story ativa que esta pessoa pode ver, mas que não é dela (para gostos e respostas).
+async function othersStory(meId, storyId) {
+  const st = await db.get('SELECT id, user_id FROM stories WHERE id = ? AND expires_at > ?', storyId, Date.now());
+  return st && st.user_id !== meId && await canSeeStoriesOf(meId, st.user_id) ? st : null;
+}
+
+app.post('/stories/:id/gosto', requireAuth, async (req, res) => {
+  const st = await othersStory(req.me.id, req.params.id);
+  if (!st) return res.status(404).json({ error: 'Story não encontrada.' });
+  const del = await db.run('DELETE FROM story_likes WHERE story_id = ? AND user_id = ?', st.id, req.me.id);
+  if (!del.changes) await db.run('INSERT INTO story_likes (story_id, user_id, created_at) VALUES (?, ?, ?)', st.id, req.me.id, Date.now());
+  res.json({ liked: !del.changes });
+});
+
+app.post('/stories/:id/responder', requireAuth, async (req, res) => {
+  const st = await othersStory(req.me.id, req.params.id);
+  const body = str(req.body.body, 1000);
+  if (!st || !body) return res.status(400).json({ error: 'Não foi possível enviar.' });
+  await db.run('INSERT INTO messages (sender_id, recipient_id, body, created_at, story_id) VALUES (?, ?, ?, ?, ?)', req.me.id, st.user_id, body, Date.now(), st.id);
+  res.json({ ok: true });
+});
+
+// Lista de quem viu (só para quem publicou), com quem deu gosto.
+app.get('/stories/:id/vistas', requireAuth, async (req, res) => {
+  const st = await db.get('SELECT id FROM stories WHERE id = ? AND user_id = ?', req.params.id, req.me.id);
+  if (!st) return res.status(404).json({ error: 'Story não encontrada.' });
+  const rows = await db.all(`SELECT u.id, u.name, u.photo_id, v.viewed_at,
+                               EXISTS (SELECT 1 FROM story_likes l WHERE l.story_id = v.story_id AND l.user_id = u.id) AS liked
+                             FROM story_views v JOIN users u ON u.id = v.user_id
+                             WHERE v.story_id = ? ORDER BY liked DESC, v.viewed_at DESC`, st.id);
+  res.json(rows.map((r) => ({ id: r.id, name: r.name, photo_id: r.photo_id, liked: Boolean(r.liked), when: r.viewed_at ? timeAgo(r.viewed_at) : '' })));
 });
 
 app.post('/stories/:id/apagar', requireAuth, async (req, res) => {
   const st = await db.get('SELECT id, image_id FROM stories WHERE id = ? AND user_id = ?', req.params.id, req.me.id);
   if (st) {
     await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
+    await db.run('DELETE FROM story_likes WHERE story_id = ?', st.id);
     await db.run('DELETE FROM stories WHERE id = ?', st.id);
     await deleteImage(st.image_id);
   }
@@ -579,12 +618,15 @@ app.get('/mensagens', requireAuth, async (req, res) => {
   res.render('mensagens', { title: 'Mensagens', conversations: await conversationsOf(req.me.id) });
 });
 
-const messagesBetween = (a, b, afterId = 0) => db.all(`SELECT id, sender_id, body, created_at FROM messages
-  WHERE ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) AND id > ?
-  ORDER BY id DESC LIMIT 100`, a, b, b, a, afterId).then((rows) => rows.reverse());
+// Inclui a story a que a mensagem responde (a miniatura só aparece enquanto a story existir).
+const messagesBetween = (a, b, afterId = 0) => db.all(`SELECT m.id, m.sender_id, m.body, m.created_at, m.story_id, s.image_id AS story_image
+  FROM messages m LEFT JOIN stories s ON s.id = m.story_id AND s.expires_at > ${Date.now()}
+  WHERE ((m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?)) AND m.id > ?
+  ORDER BY m.id DESC LIMIT 100`, a, b, b, a, afterId).then((rows) => rows.reverse());
 const markRead = (meId, otherId) =>
   db.run('UPDATE messages SET read_at = ? WHERE recipient_id = ? AND sender_id = ? AND read_at IS NULL', Date.now(), meId, otherId);
-const messageJson = (m) => ({ id: m.id, mine: undefined, body: m.body, time: fmtTime(m.created_at), sender_id: m.sender_id });
+const messageJson = (m) => ({ id: m.id, mine: undefined, body: m.body, time: fmtTime(m.created_at), sender_id: m.sender_id,
+  story_id: m.story_id || null, story_image: m.story_image || null });
 
 app.get('/mensagens/:id', requireAuth, async (req, res) => {
   const other = await db.get('SELECT id, name, photo_id, course FROM users WHERE id = ?', req.params.id);

@@ -116,6 +116,13 @@ await client.executeMultiple(`
   CREATE INDEX IF NOT EXISTS messages_pair ON messages (sender_id, recipient_id, id);
   CREATE INDEX IF NOT EXISTS messages_unread ON messages (recipient_id, read_at);
 
+  CREATE TABLE IF NOT EXISTS story_likes (
+    story_id   INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (story_id, user_id)
+  );
+
   -- Convidados de eventos privados com visibilidade "selected".
   CREATE TABLE IF NOT EXISTS event_invites (
     event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -144,6 +151,10 @@ const migrations = [
   ['stories', 'music_url', 'TEXT'],
   // Segundo do excerto onde começa o trecho de 15 s escolhido.
   ['stories', 'music_start', 'REAL NOT NULL DEFAULT 0'],
+  // Quando cada pessoa viu a story (para a lista "visto por").
+  ['story_views', 'viewed_at', 'INTEGER NOT NULL DEFAULT 0'],
+  // Mensagem enviada como resposta a uma story.
+  ['messages', 'story_id', 'INTEGER'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);
