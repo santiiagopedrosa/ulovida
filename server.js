@@ -4,7 +4,7 @@ import path from 'node:path';
 import multer from 'multer';
 import sharp from 'sharp';
 import { db } from './db.js';
-import { sendVerificationEmail } from './mail.js';
+import { sendVerificationCode } from './mail.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -14,6 +14,8 @@ const APP_URL = (process.env.APP_URL || VERCEL_URL || `http://localhost:${PORT}`
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const EMAIL_RE = /^[a-z0-9._%+-]+@ulo\.pt$/;
 const TOKEN_TTL_MS = 60 * 60 * 1000;
+const CODE_TTL_MS = 15 * 60 * 1000;
+const CODE_MAX_ATTEMPTS = 5;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const PRAXE = { caloiro: 'Caloiro/a', praxista: 'Praxista', veterano: 'Veterano/a', nao: 'Não faço praxe' };
@@ -149,7 +151,7 @@ const requireAdmin = (req, res, next) => (req.me?.is_admin ? next() : res.status
 // ---------- público: registo e login ----------
 app.get('/', (req, res) => (req.me ? res.redirect('/eventos') : res.render('home', { title: 'Bem-vindo' })));
 
-app.get('/registar', (req, res) => res.render('registar', { title: 'Registar', email: '' }));
+app.get('/registar', (req, res) => res.render('registar', { title: 'Registar', email: str(req.query.email, 120) }));
 
 app.post('/registar', async (req, res) => {
   const email = str(req.body.email, 120).toLowerCase();
@@ -157,26 +159,45 @@ app.post('/registar', async (req, res) => {
     return res.status(400).render('registar', { title: 'Registar', email, error: 'Só são aceites emails institucionais @ulo.pt.' });
   }
   if (!canSend(email, req.ip)) {
-    return res.status(429).render('registar', { title: 'Registar', email, error: 'Espera um minuto antes de pedir outro email.' });
+    return res.status(429).render('registar', { title: 'Registar', email, error: 'Espera um minuto antes de pedir outro código.' });
   }
   // Mesma resposta exista ou não conta, para não revelar quem está registado.
+  // Envia um código de 6 dígitos em vez de um link: emails sem links são menos barrados pelos filtros do Outlook.
   if (!await db.get('SELECT 1 FROM users WHERE email = ?', email)) {
-    const token = newToken();
-    await db.run('INSERT INTO email_tokens (token_hash, email, expires_at) VALUES (?, ?, ?)', sha(token), email, Date.now() + TOKEN_TTL_MS);
-    await sendVerificationEmail(email, `${APP_URL}/verificar?token=${token}`);
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+    await db.run('UPDATE email_tokens SET used = 1 WHERE email = ? AND code_hash IS NOT NULL', email);
+    await db.run('INSERT INTO email_tokens (token_hash, email, expires_at, code_hash) VALUES (?, ?, ?, ?)',
+      sha(newToken()), email, Date.now() + CODE_TTL_MS, sha(`${email}:${code}`));
+    await sendVerificationCode(email, code);
   }
-  res.render('message', {
-    title: 'Verifica o teu email',
-    heading: 'Verifica o teu email',
-    text: `Se ${email} ainda não tem conta, enviámos um link de confirmação. O link é válido durante 1 hora — vê também o spam.`,
-  });
+  res.render('codigo', { title: 'Confirma o teu email', email, code: '' });
+});
+
+app.post('/confirmar', async (req, res) => {
+  const email = str(req.body.email, 120).toLowerCase();
+  const code = str(req.body.code, 12).replace(/\D/g, '');
+  const fail = (error) => res.status(400).render('codigo', { title: 'Confirma o teu email', email, code, error });
+  const t = await db.get(`SELECT * FROM email_tokens WHERE email = ? AND code_hash IS NOT NULL AND used = 0 AND expires_at > ?
+                          ORDER BY expires_at DESC LIMIT 1`, email, Date.now());
+  if (!t || t.attempts >= CODE_MAX_ATTEMPTS) return fail('Este código expirou ou teve demasiadas tentativas. Pede um novo.');
+  const ok = code.length === 6 && crypto.timingSafeEqual(Buffer.from(sha(`${email}:${code}`)), Buffer.from(t.code_hash));
+  if (!ok) {
+    await db.run('UPDATE email_tokens SET attempts = attempts + 1 WHERE token_hash = ?', t.token_hash);
+    const left = CODE_MAX_ATTEMPTS - t.attempts - 1;
+    return fail(left ? `Código errado. ${left === 1 ? 'Resta 1 tentativa' : `Restam ${left} tentativas`}.` : 'Código errado. Pede um novo código.');
+  }
+  // Código certo: troca-o por um token de uso único para o formulário de criar conta.
+  await db.run('UPDATE email_tokens SET used = 1 WHERE token_hash = ?', t.token_hash);
+  const token = newToken();
+  await db.run('INSERT INTO email_tokens (token_hash, email, expires_at) VALUES (?, ?, ?)', sha(token), email, Date.now() + TOKEN_TTL_MS);
+  res.render('completar', { title: 'Criar conta', token, email, form: {} });
 });
 
 async function findValidToken(token) {
   if (!token) return;
-  return db.get('SELECT * FROM email_tokens WHERE token_hash = ? AND used = 0 AND expires_at > ?', sha(String(token)), Date.now());
+  return db.get('SELECT * FROM email_tokens WHERE token_hash = ? AND code_hash IS NULL AND used = 0 AND expires_at > ?', sha(String(token)), Date.now());
 }
-const invalidLink = { title: 'Link inválido', heading: 'Link inválido ou expirado', text: 'Pede um novo link na página de registo.', link: { href: '/registar', label: 'Voltar ao registo' } };
+const invalidLink = { title: 'Link inválido', heading: 'Link inválido ou expirado', text: 'Pede um novo código na página de registo.', link: { href: '/registar', label: 'Voltar ao registo' } };
 
 app.get('/verificar', async (req, res) => {
   const t = await findValidToken(req.query.token);

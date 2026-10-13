@@ -8,11 +8,11 @@ Rede social da universidade, só para emails `@ulo.pt`.
 2. `npm install`
 3. `npm start` e abre http://localhost:3000
 
-Sem SMTP configurado, o link de verificação aparece no terminal em vez de ser enviado.
+Sem SMTP configurado, o código de verificação aparece no terminal em vez de ser enviado.
 
 ## O que tem
 
-- **Registo**: só aceita `@ulo.pt` → email com link (válido 1h) → nome, curso, ano e password
+- **Registo**: só aceita `@ulo.pt` → email com código de 6 dígitos (válido 15 min, 5 tentativas) → nome, curso, ano e password
 - **Perfil**: curso, ano, praxe, estado de relação, Instagram, bio. Praxe e relação podem ficar como "prefiro não dizer"
 - **Pessoas**: lista com pesquisa por nome ou curso
 - **Eventos**: convívios e prés. Os eventos que os outros criam ficam pendentes até o admin aprovar em `/admin`. Toda a gente pode marcar "Vou!"

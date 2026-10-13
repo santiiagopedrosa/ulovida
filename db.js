@@ -89,6 +89,9 @@ const migrations = [
   ['events', 'photo_id', 'INTEGER REFERENCES images(id) ON DELETE SET NULL'],
   // 1 quando quem pediu o evento fechou o aviso de "Rejeitado".
   ['events', 'dismissed', 'INTEGER NOT NULL DEFAULT 0'],
+  // Códigos de 6 dígitos enviados por email (hash) e tentativas falhadas.
+  ['email_tokens', 'code_hash', 'TEXT'],
+  ['email_tokens', 'attempts', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

@@ -1,12 +1,12 @@
 <%- include('partials/header') %>
 <section class="panel">
   <h1>Criar conta</h1>
-  <p class="muted">Usa o teu email institucional. Vamos enviar-te um link para confirmares que és da ULO.</p>
+  <p class="muted">Usa o teu email institucional. Vamos enviar-te um código para confirmares que és da ULO.</p>
   <form method="post" action="/registar" class="form">
     <label>Email institucional
       <input type="email" name="email" value="<%= email %>" placeholder="nome@ulo.pt" pattern=".+@ulo\.pt" autocomplete="email" required autofocus>
     </label>
-    <button class="btn block">Enviar link de confirmação</button>
+    <button class="btn block">Enviar código</button>
   </form>
   <p class="muted small">Já tens conta? <a href="/entrar">Entra aqui</a>.</p>
 </section>
