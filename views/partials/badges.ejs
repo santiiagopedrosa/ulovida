@@ -1,1 +1,1 @@
-<%- include('seal') %><% const role = staffRole(id); if (role) { %><span class="role-badge" title="<%= role %> do ULOO"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.5 18.5 4 8l5 4 3-7 3 7 5-4 1.5 10.5z"/></svg><%= role %></span><% } %>
+<% if (isVerified(id)) { %><%- include('seal') %><% } %><% const role = staffRole(id); if (role) { %><span class="role-badge" title="<%= role %> do ULOO"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.5 18.5 4 8l5 4 3-7 3 7 5-4 1.5 10.5z"/></svg><%= role %></span><% } %>

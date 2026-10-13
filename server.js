@@ -117,6 +117,17 @@ const memberNo = (id) => String(id).padStart(4, '0');
 // Equipa do ULOO: aparece com etiqueta própria e cartão de fundador.
 const STAFF = { 1: 'CEO', 2: 'COO' };
 const staffRole = (id) => STAFF[Number(id)] || null;
+// Selo de verificado: a equipa (ids 1 e 2) e quem tem pelo menos 100 seguidores.
+const VERIFIED_MIN_FOLLOWERS = 100;
+let verifiedIds = new Set(), verifiedAt = 0;
+async function loadVerified() {
+  if (Date.now() - verifiedAt > 60_000) {
+    const rows = await db.all('SELECT followee_id AS id FROM follows GROUP BY followee_id HAVING COUNT(*) >= ?', VERIFIED_MIN_FOLLOWERS);
+    verifiedIds = new Set(rows.map((r) => Number(r.id)));
+    verifiedAt = Date.now();
+  }
+}
+const isVerified = (id) => Boolean(STAFF[Number(id)]) || verifiedIds.has(Number(id));
 const memberSince = (createdAt) => {
   const d = new Date(String(createdAt).replace(' ', 'T') + 'Z');
   const month = new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: 'Europe/Lisbon' }).format(d).replace('.', '');
@@ -196,12 +207,13 @@ app.use(async (req, res, next) => {
   req.me = token
     ? await db.get(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`, sha(token), Date.now())
     : undefined;
+  if (req.me) await loadVerified();
   Object.assign(res.locals, {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
     unreadCount: req.me ? await unreadOf(req.me.id) : 0,
     notifCount: req.me ? (await db.get(`SELECT COUNT(*) AS n FROM (${notificationsSql(req.me.id)}) WHERE at > ?`, req.me.notif_seen_at || 0)).n : 0,
-    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince, staffRole, gifsEnabled: Boolean(process.env.GIPHY_API_KEY),
+    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince, staffRole, isVerified, gifsEnabled: Boolean(process.env.GIPHY_API_KEY),
     path: req.path,
     error: null,
   });
