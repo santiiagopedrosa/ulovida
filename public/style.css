@@ -294,6 +294,7 @@ img.avatar { object-fit: cover; background: var(--surface); }
 .meta span { display: inline-flex; align-items: center; gap: 5px; }
 .meta a { color: var(--ink-2); }
 .event-body .bio { color: var(--ink-2); font-size: .95rem; margin: 10px 0 0; }
+.event-desc { white-space: pre-line; overflow-wrap: anywhere; }
 .event-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 @media (max-width: 480px) { .date .d { font-size: 1.9rem; } .event-body h3 { font-size: 1.2rem; } }
 

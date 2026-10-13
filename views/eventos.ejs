@@ -44,8 +44,8 @@
           <span><%- include('partials/icon', { name: 'pin' }) %> <%= e.location %></span>
           <span>por <a href="/u/<%= e.creator_id %>"><%= e.creator_name %></a><%- locals.showEmail ? ` <span class="muted">(${e.creator_email})</span>` : '' %></span>
         </div>
-        <% if (e.description) { %><p class="bio"><%= e.description %></p><% } %>
         <% if (e.photo_id) { %><img class="event-photo" src="/img/<%= e.photo_id %>" alt="" loading="lazy" decoding="async"><% } %>
+        <% if (e.description) { %><p class="bio event-desc"><%= e.description %></p><% } %>
         <div class="event-foot">
           <div class="stack">
             <% for (const a of e.attendees) { %><a href="/u/<%= a.id %>" title="<%= a.name %>"><%- include('partials/avatar', { u: a }) %></a><% } %>
