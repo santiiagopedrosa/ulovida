@@ -1,17 +1,19 @@
 <%- include('partials/header') %>
 <section class="hero">
+  <div class="hero-band"><span>ULOO</span><span>2026—2027</span></div>
   <p class="eyebrow">Exclusivo para a comunidade ULO</p>
   <% let i = 0; const words = (t) => t.split(' ').map((w) => `<span style="--i:${i++}">${w}</span>`).join(' '); %>
   <h1 class="blur-text" aria-label="A vida académica, toda num sítio."><span aria-hidden="true"><%- words('A vida académica,') %> <em><%- words('toda num sítio.') %></em></span></h1>
-  <p class="lead">Encontra colegas, descobre convívios e prés, e vê quem vai. Só entra quem tem email <strong>@ulo.pt</strong>.</p>
+  <p class="lead">Encontra colegas, descobre convívios e prés, partilha stories e fala com quem vai. Só entra quem tem email <strong>@ulo.pt</strong>.</p>
   <div class="row">
     <a class="btn" href="/registar">Criar conta <%- include('partials/icon', { name: 'arrow' }) %></a>
     <a class="btn ghost" href="/entrar">Já tenho conta</a>
   </div>
+  <p class="hero-foot">ESTG · ESECS · ESSLei · ESAD.CR · ESTM</p>
 </section>
 <section class="features">
-  <div><strong>Eventos</strong><p class="muted small">Convívios e prés aprovados, com quem vai a cada um.</p></div>
-  <div><strong>Pessoas</strong><p class="muted small">Procura colegas por nome ou curso.</p></div>
+  <div><strong>Eventos</strong><p class="muted small">Convívios e prés, públicos ou só para quem escolheres.</p></div>
+  <div><strong>Stories</strong><p class="muted small">Fotos com texto e música que desaparecem em 24 horas.</p></div>
   <div><strong>Só ULO</strong><p class="muted small">Cada conta é confirmada com o email institucional.</p></div>
 </section>
 <%- include('partials/footer') %>

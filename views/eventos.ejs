@@ -38,7 +38,7 @@
 
 <div class="list">
   <% for (const e of events) { %>
-    <article class="event" id="e<%= e.id %>">
+    <article class="event <%= e.type %>" id="e<%= e.id %>">
       <% const d = fmtParts(e.starts_at); %>
       <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
       <div class="event-body">

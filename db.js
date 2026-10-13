@@ -142,6 +142,8 @@ const migrations = [
   ['stories', 'music_preview', 'TEXT'],
   ['stories', 'music_artwork', 'TEXT'],
   ['stories', 'music_url', 'TEXT'],
+  // Segundo do excerto onde começa o trecho de 15 s escolhido.
+  ['stories', 'music_start', 'REAL NOT NULL DEFAULT 0'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

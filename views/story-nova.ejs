@@ -6,7 +6,7 @@
   <title><%= title %> · ULOO</title>
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="story-page cam-page">
@@ -14,12 +14,16 @@
   <div class="cam-top">
     <a href="/eventos" class="cam-icon" data-show="camera" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></a>
     <button type="button" class="cam-icon" data-show="edit" data-act="back" aria-label="Descartar foto"><%- include('partials/icon', { name: 'back' }) %></button>
-    <button type="button" class="cam-pill" data-show="edit" data-act="music"><%- include('partials/icon', { name: 'music' }) %> Música</button>
+    <div class="cam-tools" data-show="edit">
+      <button type="button" class="cam-pill" data-act="text" aria-label="Adicionar texto"><span class="aa">Aa</span></button>
+      <button type="button" class="cam-pill" data-act="music"><%- include('partials/icon', { name: 'music' }) %> Música</button>
+    </div>
   </div>
 
   <div class="cam-frame">
     <video playsinline muted autoplay data-show="camera"></video>
     <canvas class="cam-edit" data-show="edit"></canvas>
+    <div class="cam-texts" data-show="edit"></div>
     <p class="cam-error" hidden>Não foi possível abrir a câmara.<br>Escolhe uma foto da galeria.</p>
     <% if (locals.error) { %><p class="cam-error"><%= error %></p><% } %>
     <button type="button" class="music-chip" data-show="edit" data-act="music" hidden>
@@ -38,12 +42,34 @@
     <button type="button" class="btn cam-publish" data-show="edit" data-act="publish">A tua story <%- include('partials/icon', { name: 'arrow' }) %></button>
   </div>
 
-  <dialog class="music-sheet">
-    <div class="music-head">
-      <input type="search" placeholder="Procurar música ou artista" aria-label="Procurar música" enterkeyhint="search">
-      <button type="button" class="cam-icon dark" data-act="close-music" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></button>
+  <div class="text-editor" hidden>
+    <div class="text-editor-top">
+      <button type="button" class="cam-pill" data-act="text-bg" aria-pressed="false" title="Fundo"><span class="aa boxed">A</span></button>
+      <button type="button" class="cam-pill done" data-act="text-done">Concluído</button>
     </div>
-    <ul class="music-list"><li class="music-hint">Escreve o nome de uma música ou artista.</li></ul>
+    <textarea rows="3" maxlength="200" placeholder="Escreve…" aria-label="Texto"></textarea>
+    <input type="range" class="text-size" min="0.045" max="0.14" step="0.005" value="0.075" aria-label="Tamanho do texto">
+    <div class="text-colors" role="radiogroup" aria-label="Cor do texto"></div>
+  </div>
+
+  <dialog class="music-sheet">
+    <div data-pane="search">
+      <div class="music-head">
+        <input type="search" placeholder="Procurar música ou artista" aria-label="Procurar música" enterkeyhint="search">
+        <button type="button" class="cam-icon dark" data-act="close-music" aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></button>
+      </div>
+      <ul class="music-list"><li class="music-hint">Escreve o nome de uma música ou artista.</li></ul>
+    </div>
+    <div data-pane="trim" hidden>
+      <div class="trim-track"><img alt=""><span><strong></strong><small></small></span></div>
+      <p class="trim-label">Arrasta para escolher o trecho de 15 s</p>
+      <div class="trim-bar"><div class="trim-wave"></div><div class="trim-window"><span class="trim-progress"></span></div></div>
+      <p class="trim-time"></p>
+      <div class="row trim-actions">
+        <button type="button" class="btn ghost" data-act="change-music">Mudar música</button>
+        <button type="button" class="btn" data-act="trim-done">Concluído</button>
+      </div>
+    </div>
     <p class="music-credit">Excertos de 30 s da Apple Music</p>
   </dialog>
 </main>

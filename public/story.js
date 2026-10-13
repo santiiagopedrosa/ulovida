@@ -4,7 +4,9 @@ const slides = [...viewer.querySelectorAll('.story-slide')];
 const bars = [...viewer.querySelectorAll('.story-bars i')];
 const timeEl = viewer.querySelector('.story-time');
 const mine = viewer.dataset.mine === '1';
-const DURATION = 5000;
+// 5 s por foto; com música, 15 s (o trecho escolhido), como no Instagram.
+const duration = (s) => (s.dataset.music ? 15000 : 5000);
+const CLIP = 15;
 let i = Number(viewer.dataset.start) || 0;
 let started = 0, elapsed = 0, paused = false, raf;
 // Música: os browsers só deixam tocar som depois de um toque, por isso começa sem som se for preciso.
@@ -17,6 +19,13 @@ const setSoundIcon = () => {
   soundBtn.replaceChildren(document.getElementById(muted ? 'icon-mute' : 'icon-volume').content.cloneNode(true));
   soundBtn.setAttribute('aria-label', muted ? 'Ligar som' : 'Desligar som');
 };
+let clipStart = 0;
+// Mantém o som dentro do trecho de 15 s escolhido por quem publicou.
+audio.addEventListener('timeupdate', () => {
+  if (audio.currentTime >= clipStart + CLIP || audio.currentTime < clipStart - 0.5) audio.currentTime = clipStart;
+});
+audio.addEventListener('ended', () => { audio.currentTime = clipStart; audio.play().catch(() => {}); });
+audio.addEventListener('loadedmetadata', () => { audio.currentTime = clipStart; });
 function playMusic() {
   audio.muted = muted;
   audio.play().catch(() => { muted = autoMuted = true; audio.muted = true; audio.play().catch(() => {}); setSoundIcon(); });
@@ -38,7 +47,9 @@ function updateMusic(s) {
   musicEl.querySelector('img').src = s.dataset.musicArtwork;
   musicEl.querySelector('strong').textContent = s.dataset.musicTitle;
   musicEl.querySelector('small').textContent = s.dataset.musicArtist;
-  if (audio.src !== src) { audio.src = src; }
+  clipStart = Number(s.dataset.musicStart) || 0;
+  if (audio.src !== src) audio.src = src;
+  audio.currentTime = clipStart;
   playMusic();
   setSoundIcon();
 }
@@ -62,8 +73,9 @@ function show(n) {
 function tick(now) {
   if (!paused) {
     const t = elapsed + (now - started);
-    bars[i].style.width = `${Math.min(100, (t / DURATION) * 100)}%`;
-    if (t >= DURATION) show(i + 1);
+    const d = duration(slides[i]);
+    bars[i].style.width = `${Math.min(100, (t / d) * 100)}%`;
+    if (t >= d) show(i + 1);
   }
   raf = requestAnimationFrame(tick);
 }

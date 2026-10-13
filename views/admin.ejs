@@ -9,7 +9,7 @@
 <h2>Pedidos pendentes · <%= pending.length %></h2>
 <div class="list">
 <% for (const e of pending) { %>
-  <article class="event">
+  <article class="event <%= e.type %>">
       <% const d = fmtParts(e.starts_at); %>
       <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
       <div class="event-body">

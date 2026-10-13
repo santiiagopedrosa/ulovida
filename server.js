@@ -515,9 +515,10 @@ app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
   const now = Date.now();
   const preview = appleUrl(req.body.music_preview, ['apple.com']);
   const music = preview ? [str(req.body.music_title, 120), str(req.body.music_artist, 120), preview,
-    appleUrl(req.body.music_artwork, ['mzstatic.com']), appleUrl(req.body.music_url, ['apple.com'])] : [null, null, null, null, null];
-  await db.run(`INSERT INTO stories (user_id, image_id, created_at, expires_at, music_title, music_artist, music_preview, music_artwork, music_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music);
+    appleUrl(req.body.music_artwork, ['mzstatic.com']), appleUrl(req.body.music_url, ['apple.com']),
+    Math.min(60, Math.max(0, Number(req.body.music_start) || 0))] : [null, null, null, null, null, 0];
+  await db.run(`INSERT INTO stories (user_id, image_id, created_at, expires_at, music_title, music_artist, music_preview, music_artwork, music_url, music_start)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.me.id, imageId, now, now + STORY_TTL_MS, ...music);
   if (wantsJson) return res.json({ ok: true, redirect: '/eventos' });
   res.redirect('/eventos');
 });

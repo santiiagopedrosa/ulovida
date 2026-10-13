@@ -6,7 +6,7 @@
   <title><%= title %> · ULOO</title>
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="story-page">
@@ -19,7 +19,7 @@
   </header>
   <% stories.forEach((st, i) => { %>
     <figure class="story-slide" data-id="<%= st.id %>" data-time="<%= timeAgo(st.created_at) %>" data-views="<%= st.views %>"
-      <% if (st.music_preview) { %>data-music="<%= st.music_preview %>" data-music-title="<%= st.music_title %>" data-music-artist="<%= st.music_artist %>" data-music-artwork="<%= st.music_artwork || '' %>" data-music-url="<%= st.music_url || '' %>"<% } %> hidden>
+      <% if (st.music_preview) { %>data-music="<%= st.music_preview %>" data-music-title="<%= st.music_title %>" data-music-artist="<%= st.music_artist %>" data-music-artwork="<%= st.music_artwork || '' %>" data-music-url="<%= st.music_url || '' %>" data-music-start="<%= st.music_start || 0 %>"<% } %> hidden>
       <img src="/img/<%= st.image_id %>" alt="Story de <%= user.name %>" <%= i === start ? '' : 'loading="lazy"' %>>
     </figure>
   <% }) %>
