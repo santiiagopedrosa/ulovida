@@ -155,6 +155,32 @@ await client.executeMultiple(`
     user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     PRIMARY KEY (event_id, user_id)
   );
+
+  -- Grupos de conversa ("groups" é palavra reservada no SQLite).
+  CREATE TABLE IF NOT EXISTS chat_groups (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL
+  );
+  -- last_read_id: última mensagem do grupo que a pessoa já viu (para as não lidas).
+  CREATE TABLE IF NOT EXISTS group_members (
+    group_id     INTEGER NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    added_by     INTEGER NOT NULL,
+    joined_at    INTEGER NOT NULL,
+    last_read_id INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (group_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS group_members_user ON group_members (user_id);
+  CREATE TABLE IF NOT EXISTS group_messages (
+    id         INTEGER PRIMARY KEY,
+    group_id   INTEGER NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+    sender_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body       TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS group_messages_group ON group_messages (group_id, id);
 `);
 
 // Colunas acrescentadas depois da primeira versão: adiciona-as se a BD ainda não as tiver.
@@ -194,6 +220,8 @@ const migrations = [
   ['posts', 'gif_url', 'TEXT'],
   ['comments', 'gif_url', 'TEXT'],
   ['comments', 'image_id', 'INTEGER'],
+  // Quando a pessoa abriu as notificações pela última vez (as mais recentes contam como novas).
+  ['users', 'notif_seen_at', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

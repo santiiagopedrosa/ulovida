@@ -979,3 +979,47 @@ h1 .role-badge svg { width: 1.2em; height: 1.2em; }
   @view-transition { navigation: none; }
   *, *::before, *::after, ::view-transition-group(*) { animation: none !important; transition: none !important; }
 }
+
+/* ---------- notificações (sininho no canto superior direito) ---------- */
+.top-inner .bell { position: relative; display: grid; place-items: center; width: 40px; height: 40px; margin-left: auto; border-radius: 50%; color: var(--on-header); text-decoration: none; transition: background .15s var(--ease), transform .15s var(--ease); }
+.top-inner .bell:hover, .top-inner .bell.on { background: rgb(255 255 255 / .1); }
+.top-inner .bell:active { transform: scale(.92); }
+.bell .icon { width: 22px; height: 22px; }
+.bell .badge { position: absolute; top: 2px; right: 0; min-width: 17px; height: 17px; font-size: .62rem; padding: 0 4px; border: 2px solid var(--header); background: var(--coral); color: #fff; animation: pop .3s var(--ease); }
+.bell:has(.badge) .icon { animation: ring 1.2s var(--ease) .4s 1; transform-origin: 50% 10%; }
+@keyframes ring { 0%, 100% { rotate: 0deg; } 15% { rotate: 14deg; } 30% { rotate: -12deg; } 45% { rotate: 8deg; } 60% { rotate: -5deg; } 75% { rotate: 2deg; } }
+@media (prefers-reduced-motion: reduce) { .bell:has(.badge) .icon { animation: none; } }
+.notif { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
+.notif:hover .notif-text strong { text-decoration: underline; }
+.notif-av { position: relative; flex: none; }
+.notif-kind { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bg); background: var(--mint); color: var(--green-900); }
+.notif-kind .icon { width: 11px; height: 11px; stroke-width: 2.6; }
+.notif-kind.k-boca, .notif-kind.k-story { background: var(--coral); color: #fff; }
+.notif-kind.k-event { background: var(--yellow); }
+.notif-kind.k-comment { background: var(--lime); }
+.notif-text { flex: 1; min-width: 0; line-height: 1.4; overflow-wrap: anywhere; }
+.notif-text strong { font-weight: 700; }
+.notif.unseen .notif-text { color: var(--ink); font-weight: 500; }
+.notif-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--yellow); }
+
+/* ---------- grupos ---------- */
+.group-avatar { --av: var(--yellow); }
+.group-avatar .icon { width: 20px; height: 20px; }
+button.chat-user { border: 0; background: none; padding: 0; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+button.chat-user .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
+.bubble-name { display: block; font-size: .72rem; font-weight: 700; color: var(--yellow); margin-bottom: 2px; }
+.group-sheet { width: min(480px, 100vw); max-width: 100vw; max-height: 85dvh; margin: auto auto 0; padding: 0 16px 20px; border: 0; border-radius: 20px 20px 0 0; background: var(--card); color: var(--ink); overflow-y: auto; }
+.group-sheet[open] { animation: sheet-up .28s var(--ease); }
+.group-sheet::backdrop { background: rgb(0 0 0 / .5); }
+@media (min-width: 640px) { .group-sheet { margin: auto; border-radius: 20px; } }
+.sheet-head { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 14px 0 10px; background: var(--card); z-index: 1; }
+.sheet-head strong { font: 900 1.2rem var(--font-display); }
+.group-name { flex-wrap: nowrap; gap: 8px; }
+.group-name input { flex: 1; min-width: 0; }
+.group-count { margin: 18px 0 4px; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.group-members { display: grid; gap: 10px; padding: 6px 0 14px; }
+.group-add { margin: 4px 0 12px; }
+.group-add summary { list-style: none; cursor: pointer; }
+.group-add summary::-webkit-details-marker { display: none; }
+.group-add[open] summary { margin-bottom: 10px; }
+.group-leave { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); }

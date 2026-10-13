@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+<div class="pagehead">
+  <div>
+    <h1>Notificações</h1>
+    <p class="muted">Seguidores, 🔥, comentários e eventos de quem segues.</p>
+  </div>
+</div>
+<% const first = (n) => n.name.split(' ')[0];
+   const text = {
+     follow: () => 'começou a seguir-te.',
+     boca_like: (n) => `deu 🔥 na tua boca${n.ref_text ? ` “${n.ref_text.slice(0, 60)}${n.ref_text.length > 60 ? '…' : ''}”` : ''}.`,
+     story_like: () => 'deu 🔥 no teu momento.',
+     comment_post: (n) => `comentou a tua boca${n.ref_text ? `: “${n.ref_text.slice(0, 60)}${n.ref_text.length > 60 ? '…' : ''}”` : ''}.`,
+     comment_event: (n) => `comentou o teu evento${n.ref_text ? `: “${n.ref_text.slice(0, 60)}${n.ref_text.length > 60 ? '…' : ''}”` : ''}.`,
+     event_convivio: (n) => `criou um convívio: ${n.ref_text}.`,
+     event_pre: (n) => `criou um pré: ${n.ref_text}.`,
+     group: (n) => `adicionou-te ao grupo ${n.ref_text}.`,
+   };
+   const href = {
+     follow: (n) => `/u/${n.actor_id}`,
+     boca_like: (n) => `/bocas/${n.ref_id}`,
+     story_like: () => `/stories/${me.id}`,
+     comment_post: (n) => `/bocas/${n.ref_id}#comentarios`,
+     comment_event: (n) => `/eventos/${n.ref_id}#comentarios`,
+     event_convivio: (n) => `/eventos/${n.ref_id}`,
+     event_pre: (n) => `/eventos/${n.ref_id}`,
+     group: (n) => `/grupos/${n.ref_id}`,
+   };
+   const icon = { follow: 'user', boca_like: 'flame', story_like: 'flame', comment_post: 'message', comment_event: 'message', event_convivio: 'ticket', event_pre: 'ticket', group: 'users' }; %>
+<div class="list notif-list">
+  <% for (const n of items) { if (!text[n.kind]) continue; %>
+    <a class="notif <%= n.unseen ? 'unseen' : '' %>" href="<%= href[n.kind](n) %>">
+      <span class="notif-av"><%- include('partials/avatar', { u: { id: n.actor_id, name: n.name, photo_id: n.photo_id } }) %><i class="notif-kind k-<%= n.kind.split("_")[0] %>"><%- include('partials/icon', { name: icon[n.kind] }) %></i></span>
+      <span class="notif-text"><strong><%= first(n) %></strong> <%= text[n.kind](n) %> <span class="muted small"><%= timeAgo(n.at) %></span></span>
+      <% if (n.unseen) { %><b class="notif-dot" aria-label="Nova"></b><% } %>
+    </a>
+  <% } %>
+  <% if (!items.length) { %><p class="empty">Ainda não há notificações. Quando alguém te seguir, der 🔥 ou criar um evento, aparece aqui.</p><% } %>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+<section class="panel">
+  <a class="muted small" href="/mensagens">← Mensagens</a>
+  <h1>Novo grupo</h1>
+  <p class="muted">Escolhe quem entra. Podes juntar quem segues e quem te segue.</p>
+  <form method="post" action="/grupos/novo" class="form">
+    <label>Nome do grupo <span class="hint">Opcional</span>
+      <input name="name" maxlength="60" value="<%= form.name %>" placeholder="Ex.: Pré de quinta">
+    </label>
+    <div class="invites" id="members">
+      <% if (people.length) { %>
+        <span class="field-label">Pessoas <span class="hint" id="picked"></span></span>
+        <input type="search" class="invite-filter" placeholder="Filtrar pessoas…" aria-label="Filtrar pessoas">
+        <div class="invite-list">
+          <% for (const p of people) { %>
+            <label class="invite" data-name="<%= p.name.toLowerCase() %>">
+              <input type="checkbox" name="members" value="<%= p.id %>" <%= form.members.includes(p.id) ? 'checked' : '' %>>
+              <%- include('partials/avatar', { u: p }) %><span><%= p.name %><span class="hint"><%= p.course %></span></span>
+            </label>
+          <% } %>
+        </div>
+      <% } else { %>
+        <p class="hint">Ainda não segues ninguém nem tens seguidores. Segue pessoas em <a href="/pessoas">Pessoas</a> para criares um grupo.</p>
+      <% } %>
+    </div>
+    <button class="btn block" <%= people.length ? '' : 'disabled' %>>Criar grupo</button>
+  </form>
+</section>
+<script src="/grupo.js" defer></script>
+<%- include('partials/footer') %>

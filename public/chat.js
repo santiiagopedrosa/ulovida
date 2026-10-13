@@ -21,6 +21,8 @@ function add(m) {
     else ref.append(' · expirou');
     div.append(ref);
   }
+  // Nos grupos, as mensagens dos outros mostram quem as escreveu.
+  if (m.sender_name && !m.mine) div.append(Object.assign(document.createElement('b'), { className: 'bubble-name', textContent: m.sender_name.split(' ')[0] }));
   const text = document.createElement('span');
   text.textContent = m.body;
   const time = document.createElement('time');
@@ -32,7 +34,7 @@ function add(m) {
 async function poll() {
   if (document.hidden) return;
   try {
-    const r = await fetch(`/mensagens/${chat.dataset.other}/novas?depois=${last}`, { headers: { accept: 'application/json' } });
+    const r = await fetch(`${chat.dataset.base}/novas?depois=${last}`, { headers: { accept: 'application/json' } });
     if (!r.ok) return;
     const msgs = await r.json();
     if (msgs.length) { msgs.forEach(add); scrollDown(); }

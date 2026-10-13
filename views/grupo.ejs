@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+<div class="dm in-chat">
+<aside class="dm-list"><%- include('partials/conversas', { conversations }) %></aside>
+<section class="chat" data-base="/grupos/<%= group.id %>" data-last="<%= messages.length ? messages.at(-1).id : 0 %>">
+  <header class="chat-head">
+    <a href="/mensagens" class="icon-btn" aria-label="Voltar às mensagens">←</a>
+    <button type="button" class="chat-user group-open" aria-haspopup="dialog">
+      <span class="avatar group-avatar" aria-hidden="true"><%- include('partials/icon', { name: 'users' }) %></span>
+      <span><strong><%= group.name %></strong><span class="muted small"><%= members.map((m) => m.id === me.id ? 'Tu' : m.name.split(' ')[0]).join(', ') %></span></span>
+    </button>
+  </header>
+  <div class="chat-log" aria-live="polite">
+    <% for (const m of messages) { const mine = m.sender_id === me.id; %>
+      <div class="bubble <%= mine ? 'mine' : '' %>" data-id="<%= m.id %>"><% if (!mine) { %><b class="bubble-name"><%= m.sender_name.split(' ')[0] %></b><% } %><span><%= m.body %></span><time><%= fmtTime(m.created_at) %></time></div>
+    <% } %>
+    <% if (!messages.length) { %><p class="muted small chat-empty">Grupo criado. Diz olá!</p><% } %>
+    <span id="fim"></span>
+  </div>
+  <form class="chat-form" method="post" action="/grupos/<%= group.id %>">
+    <textarea name="body" rows="1" maxlength="2000" placeholder="Escreve para o grupo…" aria-label="Mensagem" required></textarea>
+    <button class="btn" aria-label="Enviar"><%- include('partials/icon', { name: 'send' }) %></button>
+  </form>
+</section>
+</div>
+
+<dialog class="sheet group-sheet" aria-label="Detalhes do grupo">
+  <div class="sheet-head">
+    <strong>Grupo</strong>
+    <button type="button" class="icon-btn" data-close aria-label="Fechar"><%- include('partials/icon', { name: 'x' }) %></button>
+  </div>
+  <form method="post" action="/grupos/<%= group.id %>/nome" class="row group-name">
+    <input name="name" maxlength="60" value="<%= group.name %>" aria-label="Nome do grupo" required>
+    <button class="btn ghost small">Mudar nome</button>
+  </form>
+  <p class="group-count"><%= members.length %> <%= members.length === 1 ? 'pessoa' : 'pessoas' %></p>
+  <div class="group-members">
+    <% for (const m of members) { %>
+      <a class="suggest-user" href="/u/<%= m.id %>"><%- include('partials/avatar', { u: m }) %><span><strong><%= m.id === me.id ? 'Tu' : m.name %> <%- include('partials/badges', { id: m.id }) %></strong><span class="muted small"><%= m.course %></span></span></a>
+    <% } %>
+  </div>
+  <% if (addable.length) { %>
+    <details class="group-add">
+      <summary class="btn ghost small"><%- include('partials/icon', { name: 'plus' }) %> Adicionar pessoas</summary>
+      <form method="post" action="/grupos/<%= group.id %>/adicionar" class="invites">
+        <input type="search" class="invite-filter" placeholder="Filtrar pessoas…" aria-label="Filtrar pessoas">
+        <div class="invite-list">
+          <% for (const p of addable) { %>
+            <label class="invite" data-name="<%= p.name.toLowerCase() %>">
+              <input type="checkbox" name="members" value="<%= p.id %>">
+              <%- include('partials/avatar', { u: p }) %><span><%= p.name %><span class="hint"><%= p.course %></span></span>
+            </label>
+          <% } %>
+        </div>
+        <button class="btn small">Adicionar</button>
+      </form>
+    </details>
+  <% } %>
+  <form method="post" action="/grupos/<%= group.id %>/sair" class="group-leave" onsubmit="return confirm('Sair deste grupo?')">
+    <button class="btn ghost small danger"><%- include('partials/icon', { name: 'logout' }) %> Sair do grupo</button>
+  </form>
+</dialog>
+<script src="/chat.js" defer></script>
+<script src="/grupo.js" defer></script>
+<%- include('partials/footer') %>

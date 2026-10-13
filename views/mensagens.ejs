@@ -4,7 +4,10 @@
     <h1>Mensagens</h1>
     <p class="muted">Fala com qualquer pessoa da ULO.</p>
   </div>
-  <a class="btn ghost" href="/pessoas"><%- include('partials/icon', { name: 'plus' }) %> Nova conversa</a>
+  <div class="row">
+    <a class="btn ghost" href="/grupos/novo"><%- include('partials/icon', { name: 'users' }) %> Novo grupo</a>
+    <a class="btn ghost" href="/pessoas"><%- include('partials/icon', { name: 'plus' }) %> Nova conversa</a>
+  </div>
 </div>
 <div class="dm">
   <aside class="dm-list"><%- include('partials/conversas', { conversations }) %></aside>

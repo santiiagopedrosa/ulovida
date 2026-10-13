@@ -75,6 +75,35 @@ function visibleTo(meId) {
         AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = e.creator_id AND f.followee_id = ${me}))
     OR (e.visibility = 'selected' AND EXISTS (SELECT 1 FROM event_invites i WHERE i.event_id = e.id AND i.user_id = ${me})))`;
 }
+// Notificações calculadas a partir do que já existe na BD: novos seguidores, 🔥 nas bocas e momentos,
+// comentários, eventos de quem eu sigo e grupos onde me puseram. Só contam os últimos 30 dias.
+const NOTIF_DAYS_MS = 30 * 24 * 3_600_000;
+function notificationsSql(meId) {
+  const me = Number(meId);
+  return `SELECT * FROM (
+      SELECT 'follow' AS kind, f.follower_id AS actor_id, f.created_at AS at, NULL AS ref_id, NULL AS ref_text
+        FROM follows f WHERE f.followee_id = ${me}
+      UNION ALL
+      SELECT 'boca_like', l.user_id, l.created_at, p.id, p.body
+        FROM post_likes l JOIN posts p ON p.id = l.post_id WHERE p.user_id = ${me} AND l.user_id != ${me}
+      UNION ALL
+      SELECT 'story_like', l.user_id, l.created_at, s.user_id, NULL
+        FROM story_likes l JOIN stories s ON s.id = l.story_id WHERE s.user_id = ${me} AND l.user_id != ${me}
+      UNION ALL
+      SELECT CASE c.target_type WHEN 'post' THEN 'comment_post' ELSE 'comment_event' END, c.user_id, c.created_at, c.target_id, c.body
+        FROM comments c WHERE c.user_id != ${me} AND (
+          (c.target_type = 'post' AND c.target_id IN (SELECT id FROM posts WHERE user_id = ${me}))
+          OR (c.target_type = 'event' AND c.target_id IN (SELECT id FROM events WHERE creator_id = ${me})))
+      UNION ALL
+      SELECT 'event_' || e.type, e.creator_id, CAST(strftime('%s', e.created_at) AS INTEGER) * 1000, e.id, e.title
+        FROM events e WHERE e.status = 'approved' AND e.creator_id != ${me}
+          AND e.creator_id IN (SELECT followee_id FROM follows WHERE follower_id = ${me}) AND ${visibleTo(me)}
+      UNION ALL
+      SELECT 'group', m.added_by, m.joined_at, g.id, g.name
+        FROM group_members m JOIN chat_groups g ON g.id = m.group_id WHERE m.user_id = ${me} AND m.added_by != ${me}
+    ) WHERE at > ${Date.now() - NOTIF_DAYS_MS}`;
+}
+
 // "agora", "há 5 min", "há 3 h", ou a data.
 function timeAgo(ms) {
   const min = Math.round((Date.now() - ms) / 60_000);
@@ -154,6 +183,14 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Mensagens por ler: privadas + de grupos.
+async function unreadOf(meId) {
+  const dm = await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', meId);
+  const gr = await db.get(`SELECT COUNT(*) AS n FROM group_messages x JOIN group_members m ON m.group_id = x.group_id AND m.user_id = ?
+                           WHERE x.id > m.last_read_id AND x.sender_id != ?`, meId, meId);
+  return dm.n + gr.n;
+}
+
 app.use(async (req, res, next) => {
   const token = getCookie(req, 'sid');
   req.me = token
@@ -162,7 +199,8 @@ app.use(async (req, res, next) => {
   Object.assign(res.locals, {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
-    unreadCount: req.me ? (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n : 0,
+    unreadCount: req.me ? await unreadOf(req.me.id) : 0,
+    notifCount: req.me ? (await db.get(`SELECT COUNT(*) AS n FROM (${notificationsSql(req.me.id)}) WHERE at > ?`, req.me.notif_seen_at || 0)).n : 0,
     PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime, memberNo, memberSince, staffRole, gifsEnabled: Boolean(process.env.GIPHY_API_KEY),
     path: req.path,
     error: null,
@@ -808,9 +846,10 @@ app.post('/stories/:id/apagar', requireAuth, async (req, res) => {
 });
 
 // ---------- mensagens ----------
-function conversationsOf(meId) {
+// Conversas privadas e grupos, juntos e ordenados pela última mensagem.
+async function conversationsOf(meId) {
   const me = Number(meId);
-  return db.all(`
+  const dms = await db.all(`
     WITH c AS (
       SELECT CASE WHEN sender_id = ${me} THEN recipient_id ELSE sender_id END AS other_id, MAX(id) AS last_id
       FROM messages WHERE sender_id = ${me} OR recipient_id = ${me} GROUP BY other_id
@@ -819,6 +858,16 @@ function conversationsOf(meId) {
       (SELECT COUNT(*) FROM messages x WHERE x.sender_id = c.other_id AND x.recipient_id = ${me} AND x.read_at IS NULL) AS unread
     FROM c JOIN messages m ON m.id = c.last_id JOIN users u ON u.id = c.other_id
     ORDER BY c.last_id DESC LIMIT 50`);
+  const groups = await db.all(`
+    SELECT g.id AS group_id, g.name, lm.body, lm.sender_id, su.name AS sender_name, COALESCE(lm.created_at, g.created_at) AS created_at,
+      (SELECT COUNT(*) FROM group_messages x WHERE x.group_id = g.id AND x.id > m.last_read_id AND x.sender_id != ${me}) AS unread
+    FROM group_members m JOIN chat_groups g ON g.id = m.group_id
+    LEFT JOIN group_messages lm ON lm.id = (SELECT MAX(id) FROM group_messages WHERE group_id = g.id)
+    LEFT JOIN users su ON su.id = lm.sender_id
+    WHERE m.user_id = ${me}`);
+  return [...dms.map((c) => ({ ...c, key: `u${c.other_id}`, href: `/mensagens/${c.other_id}` })),
+          ...groups.map((g) => ({ ...g, key: `g${g.group_id}`, href: `/grupos/${g.group_id}` }))]
+    .sort((a, b) => b.created_at - a.created_at);
 }
 
 app.get('/mensagens', requireAuth, async (req, res) => {
@@ -840,8 +889,8 @@ app.get('/mensagens/:id', requireAuth, async (req, res) => {
   if (!other || other.id === req.me.id) return res.redirect('/mensagens');
   const messages = await messagesBetween(req.me.id, other.id);
   await markRead(req.me.id, other.id);
-  res.locals.unreadCount = (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n;
-  res.render('conversa', { title: other.name, other, messages, conversations: await conversationsOf(req.me.id) });
+  res.locals.unreadCount = await unreadOf(req.me.id);
+  res.render('conversa', { title: other.name, other, messages, conversations: await conversationsOf(req.me.id), activeKey: `u${other.id}` });
 });
 
 // Usado pela página da conversa para ir buscar mensagens novas a cada poucos segundos.
@@ -861,6 +910,118 @@ app.post('/mensagens/:id', requireAuth, async (req, res) => {
   const { lastInsertRowid } = await db.run('INSERT INTO messages (sender_id, recipient_id, body, created_at) VALUES (?, ?, ?, ?)', req.me.id, other.id, body, now);
   if (wantsJson) return res.json({ ...messageJson({ id: lastInsertRowid, sender_id: req.me.id, body, created_at: now }), mine: true });
   res.redirect(`/mensagens/${other.id}#fim`);
+});
+
+// ---------- grupos ----------
+const GROUP_MAX = 30;
+const groupOf = (meId, groupId) => db.get(`SELECT g.*, m.last_read_id FROM chat_groups g
+  JOIN group_members m ON m.group_id = g.id AND m.user_id = ? WHERE g.id = ?`, meId, groupId);
+const groupMembers = (groupId) => db.all(`SELECT u.id, u.name, u.photo_id, u.course FROM group_members m JOIN users u ON u.id = m.user_id
+  WHERE m.group_id = ? ORDER BY m.joined_at, u.name COLLATE NOCASE`, groupId);
+const groupMessages = (groupId, afterId = 0) => db.all(`SELECT x.id, x.sender_id, x.body, x.created_at, u.name AS sender_name
+  FROM group_messages x JOIN users u ON u.id = x.sender_id
+  WHERE x.group_id = ? AND x.id > ? ORDER BY x.id DESC LIMIT 100`, groupId, afterId).then((rows) => rows.reverse());
+const markGroupRead = (meId, groupId) => db.run(`UPDATE group_members SET last_read_id = COALESCE((SELECT MAX(id) FROM group_messages WHERE group_id = ?), 0)
+  WHERE group_id = ? AND user_id = ?`, groupId, groupId, meId);
+// Só se pode juntar quem eu sigo ou quem me segue (como nos convites de eventos).
+const pickPeople = async (meId, raw, exclude = []) => {
+  const allowed = new Set((await connectionsOf(meId)).map((p) => p.id));
+  const skip = new Set(exclude);
+  return [...new Set([].concat(raw || []).map(Number))].filter((id) => allowed.has(id) && !skip.has(id));
+};
+
+app.get('/grupos/novo', requireAuth, async (req, res) => {
+  res.render('grupo-novo', { title: 'Novo grupo', people: await connectionsOf(req.me.id), form: { name: '', members: [] } });
+});
+
+app.post('/grupos/novo', requireAuth, async (req, res) => {
+  const people = await connectionsOf(req.me.id);
+  const form = { name: str(req.body.name, 60), members: await pickPeople(req.me.id, req.body.members) };
+  const fail = (error) => res.status(400).render('grupo-novo', { title: 'Novo grupo', people, form, error });
+  if (!form.members.length) return fail('Escolhe pelo menos uma pessoa.');
+  if (form.members.length > GROUP_MAX - 1) return fail(`Um grupo tem no máximo ${GROUP_MAX} pessoas.`);
+  if (!form.name) {
+    // Sem nome: usa os primeiros nomes de quem está no grupo.
+    const first = (id) => people.find((p) => p.id === id).name.split(' ')[0];
+    form.name = [req.me.name.split(' ')[0], ...form.members.map(first)].join(', ').slice(0, 60);
+  }
+  const now = Date.now();
+  const { lastInsertRowid: groupId } = await db.run('INSERT INTO chat_groups (name, creator_id, created_at) VALUES (?, ?, ?)', form.name, req.me.id, now);
+  for (const id of [req.me.id, ...form.members]) {
+    await db.run('INSERT INTO group_members (group_id, user_id, added_by, joined_at) VALUES (?, ?, ?, ?)', groupId, id, req.me.id, now);
+  }
+  res.redirect(`/grupos/${groupId}`);
+});
+
+app.get('/grupos/:id', requireAuth, async (req, res, next) => {
+  const group = await groupOf(req.me.id, req.params.id);
+  if (!group) return next();
+  const [messages, members] = await Promise.all([groupMessages(group.id), groupMembers(group.id)]);
+  await markGroupRead(req.me.id, group.id);
+  res.locals.unreadCount = await unreadOf(req.me.id);
+  const inGroup = new Set(members.map((m) => m.id));
+  const addable = (await connectionsOf(req.me.id)).filter((p) => !inGroup.has(p.id));
+  res.render('grupo', { title: group.name, group, messages, members, addable, conversations: await conversationsOf(req.me.id), activeKey: `g${group.id}` });
+});
+
+app.get('/grupos/:id/novas', requireAuth, async (req, res) => {
+  const group = await groupOf(req.me.id, req.params.id);
+  if (!group) return res.status(404).json([]);
+  const messages = await groupMessages(group.id, Number(req.query.depois) || 0);
+  if (messages.length) await markGroupRead(req.me.id, group.id);
+  res.json(messages.map((m) => ({ ...messageJson(m), sender_name: m.sender_name, mine: m.sender_id === req.me.id })));
+});
+
+app.post('/grupos/:id', requireAuth, async (req, res) => {
+  const group = await groupOf(req.me.id, req.params.id);
+  const body = str(req.body.body, 2000);
+  if (!group || !body) return wantsJson(req) ? res.status(400).json({ error: 'Mensagem vazia.' }) : res.redirect(`/grupos/${req.params.id}`);
+  const now = Date.now();
+  const { lastInsertRowid } = await db.run('INSERT INTO group_messages (group_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)', group.id, req.me.id, body, now);
+  await markGroupRead(req.me.id, group.id);
+  if (wantsJson(req)) return res.json({ ...messageJson({ id: lastInsertRowid, sender_id: req.me.id, body, created_at: now }), mine: true });
+  res.redirect(`/grupos/${group.id}#fim`);
+});
+
+app.post('/grupos/:id/adicionar', requireAuth, async (req, res) => {
+  const group = await groupOf(req.me.id, req.params.id);
+  if (!group) return res.redirect('/mensagens');
+  const members = await groupMembers(group.id);
+  const ids = (await pickPeople(req.me.id, req.body.members, members.map((m) => m.id))).slice(0, Math.max(0, GROUP_MAX - members.length));
+  for (const id of ids) {
+    await db.run('INSERT OR IGNORE INTO group_members (group_id, user_id, added_by, joined_at) VALUES (?, ?, ?, ?)', group.id, id, req.me.id, Date.now());
+  }
+  res.redirect(`/grupos/${group.id}`);
+});
+
+app.post('/grupos/:id/nome', requireAuth, async (req, res) => {
+  const name = str(req.body.name, 60);
+  if (name && await groupOf(req.me.id, req.params.id)) await db.run('UPDATE chat_groups SET name = ? WHERE id = ?', name, req.params.id);
+  res.redirect(`/grupos/${req.params.id}`);
+});
+
+// Sair do grupo; o último a sair apaga-o (as FKs não são garantidas no Turso, por isso apaga-se à mão).
+app.post('/grupos/:id/sair', requireAuth, async (req, res) => {
+  const group = await groupOf(req.me.id, req.params.id);
+  if (group) {
+    await db.run('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', group.id, req.me.id);
+    const { n } = await db.get('SELECT COUNT(*) AS n FROM group_members WHERE group_id = ?', group.id);
+    if (!n) {
+      await db.run('DELETE FROM group_messages WHERE group_id = ?', group.id);
+      await db.run('DELETE FROM chat_groups WHERE id = ?', group.id);
+    }
+  }
+  res.redirect('/mensagens');
+});
+
+// ---------- notificações ----------
+app.get('/notificacoes', requireAuth, async (req, res) => {
+  const rows = await db.all(`SELECT n.*, u.name, u.photo_id FROM (${notificationsSql(req.me.id)}) n
+    JOIN users u ON u.id = n.actor_id ORDER BY n.at DESC LIMIT 60`);
+  const seen = req.me.notif_seen_at || 0;
+  await db.run('UPDATE users SET notif_seen_at = ? WHERE id = ?', Date.now(), req.me.id);
+  res.locals.notifCount = 0;
+  res.render('notificacoes', { title: 'Notificações', items: rows.map((n) => ({ ...n, unseen: n.at > seen })) });
 });
 
 // ---------- admin ----------
