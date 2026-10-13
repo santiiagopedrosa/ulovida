@@ -2,13 +2,13 @@
 // O resultado já recortado e reduzido substitui o ficheiro no formulário, por isso o envio fica leve.
 // Sem JavaScript, o envio normal continua a funcionar e o servidor trata da foto.
 
-function openCropper(bitmap, { aspect, round }) {
+function openCropper(bitmap, { aspect, ratio, round }) {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.className = 'cropper';
     dialog.innerHTML = `
       <p class="cropper-title">Ajustar foto</p>
-      <div class="cropper-stage ${round ? 'round' : ''}" style="aspect-ratio: ${aspect}">
+      <div class="cropper-stage ${round ? 'round' : ''}" style="aspect-ratio: ${aspect}; width: min(100%, calc(60vh * ${ratio})); margin: 0 auto">
         <canvas></canvas>
       </div>
       <label class="cropper-zoom"><span class="muted small">Zoom</span>
@@ -108,7 +108,7 @@ for (const input of document.querySelectorAll('input[type=file][data-max]')) {
     let bitmap;
     try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { return; }
 
-    const crop = await openCropper(bitmap, { aspect: `${aw} / ${ah || 1}`, round: 'round' in input.dataset });
+    const crop = await openCropper(bitmap, { aspect: `${aw} / ${ah || 1}`, ratio: aspect, round: 'round' in input.dataset });
     if (!crop) {
       // Cancelado: limpa a escolha e repõe a foto anterior.
       input.value = '';

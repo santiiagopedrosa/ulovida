@@ -1,0 +1,17 @@
+<label>Escola
+  <select name="school" id="school-select" required>
+    <option value="">Escolher…</option>
+    <% for (const [sigla, nome] of Object.entries(SCHOOLS)) { %><option value="<%= sigla %>" <%= form.school === sigla ? 'selected' : '' %>><%= sigla %> — <%= nome %></option><% } %>
+  </select>
+</label>
+<label>Curso
+  <select name="course" id="course-select" required>
+    <option value="">Escolher…</option>
+    <% for (const [sigla, tipos] of Object.entries(COURSES)) { for (const [tipo, cursos] of Object.entries(tipos)) { %>
+      <optgroup label="<%= sigla %> · <%= tipo %>" data-school="<%= sigla %>">
+        <% for (const c of cursos) { %><option <%= form.school === sigla && form.course === c ? 'selected' : '' %>><%= c %></option><% } %>
+      </optgroup>
+    <% } } %>
+  </select>
+</label>
+<script src="/curso.js" defer></script>

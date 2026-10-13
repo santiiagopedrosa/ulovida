@@ -19,10 +19,15 @@
     <% if (me) { %>
       <nav>
         <% const is = (...ps) => ps.some((p) => path === p || path.startsWith(p + '/'));
-           const links = [['/eventos', 'Eventos', is('/eventos')], ['/pessoas', 'Pessoas', is('/pessoas')], ['/u/' + me.id, 'Perfil', is('/u/' + me.id, '/perfil')]];
-           if (me.is_admin) links.push(['/admin', 'Admin', is('/admin')]); %>
-        <% for (const [href, label, active] of links) { %>
-          <a href="<%= href %>" <%- active ? 'class="on" aria-current="page"' : '' %>><% if (active) { %><i class="nav-pill" aria-hidden="true"></i><% } %><%= label %><% if (href === '/admin' && pendingCount) { %> <b class="badge" aria-label="<%= pendingCount %> pendentes"><%= pendingCount %></b><% } %></a>
+           const links = [
+             ['/eventos', 'Eventos', is('/eventos', '/stories')],
+             ['/pessoas', 'Pessoas', is('/pessoas')],
+             ['/mensagens', 'Mensagens', is('/mensagens'), unreadCount, 'não lidas'],
+             ['/u/' + me.id, 'Perfil', is('/u/' + me.id, '/perfil')],
+           ];
+           if (me.is_admin) links.push(['/admin', 'Admin', is('/admin'), pendingCount, 'pendentes']); %>
+        <% for (const [href, label, active, n, what] of links) { %>
+          <a href="<%= href %>" <%- active ? 'class="on" aria-current="page"' : '' %>><% if (active) { %><i class="nav-pill" aria-hidden="true"></i><% } %><%= label %><% if (n) { %> <b class="badge" aria-label="<%= n %> <%= what %>"><%= n > 99 ? '99+' : n %></b><% } %></a>
         <% } %>
         <form method="post" action="/sair"><button class="navbtn">Sair</button></form>
       </nav>

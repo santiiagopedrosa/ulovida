@@ -1,7 +1,7 @@
 <%- include('partials/header') %>
 <section class="panel">
   <h1>Novo evento</h1>
-  <p class="muted"><%= me.is_admin ? 'Como admin, o evento é publicado logo.' : 'O evento só fica visível depois de ser aprovado pelo admin.' %></p>
+  <p class="muted">Eventos para todos passam pela aprovação do admin<%= me.is_admin ? ' (os teus são publicados logo)' : '' %>. Eventos privados ficam visíveis logo para quem escolheres.</p>
   <form method="post" action="/eventos/novo" class="form" enctype="multipart/form-data">
     <div class="seg" role="radiogroup" aria-label="Tipo de evento">
       <label><input type="radio" name="type" value="convivio" <%= form.type === 'convivio' ? 'checked' : '' %>> Convívio</label>
@@ -11,6 +11,32 @@
     <label>Local <input name="location" value="<%= form.location || '' %>" maxlength="120" required></label>
     <label>Data e hora <input type="datetime-local" name="starts_at" value="<%= form.starts_at || '' %>" min="<%= min %>" required></label>
     <label>Descrição <span class="hint">Opcional — o que levar, preço, dress code…</span><textarea name="description" rows="4" maxlength="1000"><%= form.description || '' %></textarea></label>
+    <fieldset class="field vis">
+      <legend class="field-label">Quem pode ver</legend>
+      <% for (const [v, label, hint] of [
+        ['public', 'Todos', 'Toda a gente da ULO, depois de aprovado'],
+        ['mutual', 'Seguidores mútuos', 'Quem segues e te segue de volta'],
+        ['selected', 'Pessoas selecionadas', 'Só quem convidares'],
+      ]) { %>
+        <label class="radio-card"><input type="radio" name="visibility" value="<%= v %>" <%= form.visibility === v ? 'checked' : '' %>>
+          <span><strong><%= label %></strong><span class="hint"><%= hint %></span></span></label>
+      <% } %>
+      <div class="invites" id="invites">
+        <% if (people.length) { %>
+          <input type="search" class="invite-filter" placeholder="Filtrar pessoas…" aria-label="Filtrar pessoas">
+          <div class="invite-list">
+            <% for (const p of people) { %>
+              <label class="invite" data-name="<%= p.name.toLowerCase() %>">
+                <input type="checkbox" name="invites" value="<%= p.id %>" <%= form.invites.includes(p.id) ? 'checked' : '' %>>
+                <%- include('partials/avatar', { u: p }) %><span><%= p.name %><span class="hint"><%= p.course %></span></span>
+              </label>
+            <% } %>
+          </div>
+        <% } else { %>
+          <p class="hint">Ainda não segues ninguém nem tens seguidores. Segue pessoas em <a href="/pessoas">Pessoas</a> para as poderes convidar.</p>
+        <% } %>
+      </div>
+    </fieldset>
     <div class="field">
       <span class="field-label">Foto <span class="hint">Opcional — um cartaz ou foto do sítio</span></span>
       <img id="event-preview" class="event-photo" alt="" hidden>
@@ -19,8 +45,27 @@
         <input type="file" name="photo" accept="image/*" data-max="1600" data-aspect="16/9" data-preview="event-preview">
       </label>
     </div>
-    <button class="btn block"><%= me.is_admin ? 'Publicar' : 'Enviar para aprovação' %></button>
+    <button class="btn block" id="event-submit" data-review="Enviar para aprovação" data-publish="Publicar"><%= form.visibility === 'public' && !me.is_admin ? 'Enviar para aprovação' : 'Publicar' %></button>
   </form>
 </section>
 <script src="/upload.js" defer></script>
+<script>
+  // Mostra a lista de convidados só em "Pessoas selecionadas" e ajusta o texto do botão.
+  const form = document.querySelector('form[action="/eventos/novo"]');
+  const invites = document.getElementById('invites');
+  const submit = document.getElementById('event-submit');
+  const isAdmin = <%= me.is_admin ? 'true' : 'false' %>;
+  const sync = () => {
+    const v = form.visibility.value;
+    invites.hidden = v !== 'selected';
+    submit.textContent = v === 'public' && !isAdmin ? submit.dataset.review : submit.dataset.publish;
+  };
+  form.addEventListener('change', (e) => { if (e.target.name === 'visibility') sync(); });
+  sync();
+  const filter = invites.querySelector('.invite-filter');
+  filter?.addEventListener('input', () => {
+    const q = filter.value.trim().toLowerCase();
+    for (const el of invites.querySelectorAll('.invite')) el.hidden = q && !el.dataset.name.includes(q);
+  });
+</script>
 <%- include('partials/footer') %>

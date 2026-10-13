@@ -5,6 +5,7 @@ import multer from 'multer';
 import sharp from 'sharp';
 import { db } from './db.js';
 import { sendVerificationCode } from './mail.js';
+import { SCHOOLS, COURSES } from './courses.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -22,6 +23,9 @@ export const PRAXE = { caloiro: 'Caloiro/a', praxista: 'Praxista', veterano: 'Ve
 export const RELACAO = { solteiro: 'Solteiro/a', namorar: 'A namorar', complicado: 'É complicado' };
 const ANOS = ['1º ano', '2º ano', '3º ano', '4º ano', '5º ano', 'Mestrado', 'Doutoramento'];
 const TIPOS = { convivio: 'Convívio', pre: 'Pré' };
+const VISIBILIDADE = { public: 'Todos', mutual: 'Seguidores mútuos', selected: 'Pessoas selecionadas' };
+const STORY_TTL_MS = 24 * 60 * 60 * 1000;
+const validCourse = (school, course) => Boolean(SCHOOLS[school]) && Object.values(COURSES[school]).some((list) => list.includes(course));
 
 // O admin é sempre e só o email definido em ADMIN_EMAIL.
 if (ADMIN_EMAIL) await db.run('UPDATE users SET is_admin = (email = ?)', ADMIN_EMAIL);
@@ -60,6 +64,27 @@ const fmtParts = (s) => {
   const f = (o) => new Intl.DateTimeFormat('pt-PT', o).format(d).replace('.', '');
   return { day: f({ day: 'numeric' }), month: f({ month: 'short' }), weekday: f({ weekday: 'short' }).slice(0, 3), time: f({ hour: '2-digit', minute: '2-digit' }) };
 };
+
+// Condição SQL (alias "e") para os eventos que o utilizador pode ver.
+// O id vem da sessão (inteiro da BD), por isso pode ir diretamente na query.
+function visibleTo(meId) {
+  const me = Number(meId);
+  return `(e.visibility = 'public' OR e.creator_id = ${me}
+    OR (e.visibility = 'mutual'
+        AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${me} AND f.followee_id = e.creator_id)
+        AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = e.creator_id AND f.followee_id = ${me}))
+    OR (e.visibility = 'selected' AND EXISTS (SELECT 1 FROM event_invites i WHERE i.event_id = e.id AND i.user_id = ${me})))`;
+}
+// "agora", "há 5 min", "há 3 h", ou a data.
+function timeAgo(ms) {
+  const min = Math.round((Date.now() - ms) / 60_000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  if (min < 24 * 60) return `há ${Math.floor(min / 60)} h`;
+  return new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'short', timeZone: 'Europe/Lisbon' }).format(ms);
+}
+const timeFmt = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
+const fmtTime = (ms) => timeFmt.format(ms);
 
 async function startSession(res, userId) {
   const token = newToken();
@@ -105,6 +130,12 @@ app.use(async (req, res, next) => {
     lastCleanup = Date.now();
     await db.run('DELETE FROM sessions WHERE expires_at < ?', Date.now());
     await db.run('DELETE FROM email_tokens WHERE expires_at < ?', Date.now());
+    const old = await db.all('SELECT id, image_id FROM stories WHERE expires_at < ?', Date.now());
+    for (const st of old) {
+      await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
+      await db.run('DELETE FROM stories WHERE id = ?', st.id);
+      await deleteImage(st.image_id);
+    }
   }
   next();
 });
@@ -117,7 +148,8 @@ app.use(async (req, res, next) => {
   Object.assign(res.locals, {
     me: req.me,
     pendingCount: req.me?.is_admin ? (await db.get(`SELECT COUNT(*) AS n FROM events WHERE status = 'pending'`)).n : 0,
-    PRAXE, RELACAO, ANOS, TIPOS, fmtDate, fmtParts,
+    unreadCount: req.me ? (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n : 0,
+    PRAXE, RELACAO, ANOS, TIPOS, VISIBILIDADE, SCHOOLS, COURSES, fmtDate, fmtParts, timeAgo, fmtTime,
     path: req.path,
     error: null,
   });
@@ -137,8 +169,8 @@ const photoUpload = (req, res, next) =>
 // Reduz, roda segundo o EXIF e converte para WebP (o que também apaga metadados como a localização GPS).
 async function saveImage(file, kind) {
   const img = sharp(file.buffer).rotate();
-  const sized = kind === 'avatar'
-    ? img.resize(400, 400, { fit: 'cover' })
+  const sized = kind === 'avatar' ? img.resize(400, 400, { fit: 'cover' })
+    : kind === 'story' ? img.resize(1080, 1920, { fit: 'inside', withoutEnlargement: true })
     : img.resize(1600, 1600, { fit: 'inside', withoutEnlargement: true });
   const data = await sized.webp({ quality: 80 }).toBuffer();
   const { lastInsertRowid } = await db.run('INSERT INTO images (data, mime) VALUES (?, ?)', data, 'image/webp');
@@ -208,18 +240,19 @@ app.get('/verificar', async (req, res) => {
 app.post('/verificar', async (req, res) => {
   const t = await findValidToken(req.body.token);
   if (!t) return res.status(400).render('message', invalidLink);
-  const form = { name: str(req.body.name, 60), course: str(req.body.course, 80), year: str(req.body.year, 20) };
+  const form = { name: str(req.body.name, 60), school: str(req.body.school, 20), course: str(req.body.course, 120), year: str(req.body.year, 20) };
   const password = String(req.body.password || '');
   const fail = (error) => res.status(400).render('completar', { title: 'Criar conta', token: req.body.token, email: t.email, form, error });
   if (form.name.length < 2) return fail('Escreve o teu nome.');
-  if (!form.course) return fail('Indica o teu curso.');
+  if (!SCHOOLS[form.school]) return fail('Escolhe a tua escola.');
+  if (!validCourse(form.school, form.course)) return fail('Escolhe o teu curso da lista.');
   if (!ANOS.includes(form.year)) return fail('Escolhe o teu ano.');
   if (password.length < 8) return fail('A password tem de ter pelo menos 8 caracteres.');
   if (await db.get('SELECT 1 FROM users WHERE email = ?', t.email)) return fail('Este email já tem conta. Faz login.');
 
   await db.run('UPDATE email_tokens SET used = 1 WHERE token_hash = ?', t.token_hash);
-  const { lastInsertRowid } = await db.run('INSERT INTO users (email, name, password_hash, course, year, is_admin) VALUES (?, ?, ?, ?, ?, ?)',
-    t.email, form.name, hashPassword(password), form.course, form.year, t.email === ADMIN_EMAIL ? 1 : 0);
+  const { lastInsertRowid } = await db.run('INSERT INTO users (email, name, password_hash, school, course, year, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    t.email, form.name, hashPassword(password), form.school, form.course, form.year, t.email === ADMIN_EMAIL ? 1 : 0);
   await startSession(res, lastInsertRowid);
   res.redirect('/perfil/editar?novo=1');
 });
@@ -254,10 +287,11 @@ app.get('/img/:id', requireAuth, async (req, res) => {
 
 app.get('/pessoas', requireAuth, async (req, res) => {
   const q = str(req.query.q, 60);
+  const escola = SCHOOLS[req.query.escola] ? req.query.escola : '';
   const like = `%${q}%`;
-  const people = await db.all(`SELECT id, name, course, year, praxe, relationship, photo_id FROM users
-              WHERE name LIKE ? OR course LIKE ? ORDER BY name COLLATE NOCASE`, like, like);
-  res.render('pessoas', { title: 'Pessoas', people, q });
+  const people = await db.all(`SELECT id, name, school, course, year, praxe, relationship, photo_id FROM users
+              WHERE (name LIKE ? OR course LIKE ?) AND (? = '' OR school = ?) ORDER BY name COLLATE NOCASE`, like, like, escola, escola);
+  res.render('pessoas', { title: 'Pessoas', people, q, escola });
 });
 
 app.get('/u/:id', requireAuth, async (req, res) => {
@@ -265,9 +299,19 @@ app.get('/u/:id', requireAuth, async (req, res) => {
   if (!user) return res.status(404).render('message', { title: 'Não encontrado', heading: 'Perfil não encontrado', text: '' });
   const today = eventsCutoff();
   const going = await db.all(`SELECT e.* FROM events e JOIN event_attendees a ON a.event_id = e.id
-              WHERE a.user_id = ? AND e.status = 'approved' AND e.starts_at >= ? ORDER BY e.starts_at`, user.id, today);
-  const created = await db.all(`SELECT * FROM events WHERE creator_id = ? AND status = 'approved' ORDER BY starts_at DESC LIMIT 10`, user.id);
-  res.render('perfil', { title: user.name, user, going, created });
+              WHERE a.user_id = ? AND e.status = 'approved' AND e.starts_at >= ? AND ${visibleTo(req.me.id)} ORDER BY e.starts_at`, user.id, today);
+  const created = await db.all(`SELECT e.* FROM events e WHERE e.creator_id = ? AND e.status = 'approved' AND ${visibleTo(req.me.id)}
+              ORDER BY e.starts_at DESC LIMIT 10`, user.id);
+  const count = async (sql) => (await db.get(sql, user.id)).n;
+  const iFollow = Boolean(await db.get('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?', req.me.id, user.id));
+  const followsMe = Boolean(await db.get('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?', user.id, req.me.id));
+  const canSeeStories = iFollow || user.id === req.me.id;
+  const hasStory = canSeeStories && Boolean(await db.get('SELECT 1 FROM stories WHERE user_id = ? AND expires_at > ?', user.id, Date.now()));
+  res.render('perfil', {
+    title: user.name, user, going, created, iFollow, followsMe, hasStory,
+    followers: await count('SELECT COUNT(*) AS n FROM follows WHERE followee_id = ?'),
+    following: await count('SELECT COUNT(*) AS n FROM follows WHERE follower_id = ?'),
+  });
 });
 
 app.get('/perfil/editar', requireAuth, (req, res) => {
@@ -277,7 +321,8 @@ app.get('/perfil/editar', requireAuth, (req, res) => {
 app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
   const form = {
     name: str(req.body.name, 60),
-    course: str(req.body.course, 80),
+    school: str(req.body.school, 20),
+    course: str(req.body.course, 120),
     year: str(req.body.year, 20),
     bio: str(req.body.bio, 500),
     praxe: str(req.body.praxe, 20),
@@ -287,6 +332,8 @@ app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
   };
   const fail = (error) => res.status(400).render('editar-perfil', { title: 'Editar perfil', form, novo: false, error });
   if (form.name.length < 2) return fail('Escreve o teu nome.');
+  if (!SCHOOLS[form.school]) return fail('Escolhe a tua escola.');
+  if (!validCourse(form.school, form.course)) return fail('Escolhe o teu curso da lista.');
   if (!ANOS.includes(form.year)) return fail('Escolhe o teu ano.');
   if (form.praxe && !PRAXE[form.praxe]) return fail('Opção de praxe inválida.');
   if (form.relationship && !RELACAO[form.relationship]) return fail('Opção de relação inválida.');
@@ -297,8 +344,8 @@ app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
   if (req.file) {
     try { photoId = await saveImage(req.file, 'avatar'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
   }
-  await db.run(`UPDATE users SET name = ?, course = ?, year = ?, bio = ?, praxe = ?, relationship = ?, instagram = ?, photo_id = ? WHERE id = ?`,
-    form.name, form.course, form.year, form.bio, form.praxe, form.relationship, form.instagram, photoId, req.me.id);
+  await db.run(`UPDATE users SET name = ?, school = ?, course = ?, year = ?, bio = ?, praxe = ?, relationship = ?, instagram = ?, photo_id = ? WHERE id = ?`,
+    form.name, form.school, form.course, form.year, form.bio, form.praxe, form.relationship, form.instagram, photoId, req.me.id);
   if (photoId !== req.me.photo_id) await deleteImage(req.me.photo_id);
   res.redirect(`/u/${req.me.id}`);
 });
@@ -310,7 +357,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
                 (SELECT COUNT(*) FROM event_attendees a WHERE a.event_id = e.id) AS going,
                 EXISTS (SELECT 1 FROM event_attendees a WHERE a.event_id = e.id AND a.user_id = ?) AS im_going
               FROM events e JOIN users u ON u.id = e.creator_id
-              WHERE e.status = 'approved' AND e.starts_at >= ? AND (? = '' OR e.type = ?)
+              WHERE e.status = 'approved' AND e.starts_at >= ? AND (? = '' OR e.type = ?) AND ${visibleTo(req.me.id)}
               ORDER BY e.starts_at`, req.me.id, eventsCutoff(), tipo, tipo);
   await Promise.all(events.map(async (e) => {
     e.attendees = await db.all(`SELECT u.id, u.name, u.photo_id FROM event_attendees a JOIN users u ON u.id = a.user_id WHERE a.event_id = ? LIMIT 8`, e.id);
@@ -318,11 +365,27 @@ app.get('/eventos', requireAuth, async (req, res) => {
   // Pedidos ainda por aprovar ou rejeitados; somem quando a data passa ou quando a pessoa fecha o aviso.
   const mine = await db.all(`SELECT * FROM events WHERE creator_id = ? AND status != 'approved' AND dismissed = 0 AND starts_at >= ?
                              ORDER BY created_at DESC LIMIT 10`, req.me.id, nowLocal());
-  res.render('eventos', { title: 'Eventos', events, mine, tipo, created: req.query.criado === '1' });
+  // Barra de stories: as minhas e as de quem eu sigo, primeiro as que ainda não vi.
+  const me = Number(req.me.id);
+  const stories = await db.all(`SELECT u.id, u.name, u.photo_id, MAX(s.created_at) AS last,
+                                  SUM(CASE WHEN v.user_id IS NULL THEN 1 ELSE 0 END) AS unseen
+                                FROM stories s JOIN users u ON u.id = s.user_id
+                                LEFT JOIN story_views v ON v.story_id = s.id AND v.user_id = ${me}
+                                WHERE s.expires_at > ? AND (s.user_id = ${me} OR s.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ${me}))
+                                GROUP BY u.id ORDER BY u.id = ${me} DESC, unseen > 0 DESC, last DESC`, Date.now());
+  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, created: req.query.criado === '1' });
 });
 
-app.get('/eventos/novo', requireAuth, (req, res) => {
-  res.render('evento-novo', { title: 'Novo evento', form: { type: req.query.tipo === 'pre' ? 'pre' : 'convivio' }, min: nowLocal() });
+// Pessoas que podem ser convidadas para um evento privado: quem eu sigo e quem me segue.
+const connectionsOf = (meId) => db.all(`SELECT id, name, photo_id, course FROM users WHERE id != ? AND (
+    id IN (SELECT followee_id FROM follows WHERE follower_id = ?) OR id IN (SELECT follower_id FROM follows WHERE followee_id = ?))
+  ORDER BY name COLLATE NOCASE`, meId, meId, meId);
+
+app.get('/eventos/novo', requireAuth, async (req, res) => {
+  res.render('evento-novo', {
+    title: 'Novo evento', min: nowLocal(), people: await connectionsOf(req.me.id),
+    form: { type: req.query.tipo === 'pre' ? 'pre' : 'convivio', visibility: 'public', invites: [] },
+  });
 });
 
 app.post('/eventos/novo', requireAuth, photoUpload, async (req, res) => {
@@ -332,27 +395,39 @@ app.post('/eventos/novo', requireAuth, photoUpload, async (req, res) => {
     description: str(req.body.description, 1000),
     location: str(req.body.location, 120),
     starts_at: str(req.body.starts_at, 16),
+    visibility: VISIBILIDADE[req.body.visibility] ? req.body.visibility : '',
+    invites: [].concat(req.body.invites || []).map(Number).filter(Boolean),
   };
-  const fail = (error) => res.status(400).render('evento-novo', { title: 'Novo evento', form, min: nowLocal(), error });
+  const people = await connectionsOf(req.me.id);
+  const fail = (error) => res.status(400).render('evento-novo', { title: 'Novo evento', form, min: nowLocal(), people, error });
   if (!TIPOS[form.type]) return fail('Escolhe o tipo de evento.');
   if (form.title.length < 3) return fail('Dá um nome ao evento.');
   if (!form.location) return fail('Indica o local.');
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(form.starts_at) || isNaN(new Date(form.starts_at))) return fail('Data inválida.');
   if (form.starts_at < nowLocal()) return fail('A data tem de ser no futuro.');
+  if (!form.visibility) return fail('Escolhe quem pode ver o evento.');
+  const allowed = new Set(people.map((p) => p.id));
+  form.invites = form.invites.filter((id) => allowed.has(id));
+  if (form.visibility === 'selected' && !form.invites.length) return fail('Escolhe pelo menos uma pessoa para convidar.');
   if (req.uploadError) return fail(req.uploadError);
 
   let photoId = null;
   if (req.file) {
     try { photoId = await saveImage(req.file, 'event'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
   }
-  // Eventos criados pelo admin ficam logo aprovados; os restantes esperam aprovação.
-  await db.run(`INSERT INTO events (creator_id, type, title, description, location, starts_at, status, photo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    req.me.id, form.type, form.title, form.description, form.location, form.starts_at, req.me.is_admin ? 'approved' : 'pending', photoId);
-  res.redirect(req.me.is_admin ? '/eventos' : '/eventos?criado=1');
+  // Eventos públicos precisam de aprovação (exceto os do admin); os privados ficam logo visíveis para quem tem acesso.
+  const needsApproval = form.visibility === 'public' && !req.me.is_admin;
+  const { lastInsertRowid: eventId } = await db.run(`INSERT INTO events (creator_id, type, title, description, location, starts_at, status, photo_id, visibility)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    req.me.id, form.type, form.title, form.description, form.location, form.starts_at, needsApproval ? 'pending' : 'approved', photoId, form.visibility);
+  if (form.visibility === 'selected') {
+    for (const id of form.invites) await db.run('INSERT OR IGNORE INTO event_invites (event_id, user_id) VALUES (?, ?)', eventId, id);
+  }
+  res.redirect(needsApproval ? '/eventos?criado=1' : `/eventos#e${eventId}`);
 });
 
 app.post('/eventos/:id/vou', requireAuth, async (req, res) => {
-  const ev = await db.get(`SELECT id FROM events WHERE id = ? AND status = 'approved'`, req.params.id);
+  const ev = await db.get(`SELECT e.id FROM events e WHERE e.id = ? AND e.status = 'approved' AND ${visibleTo(req.me.id)}`, req.params.id);
   if (ev) {
     const del = await db.run('DELETE FROM event_attendees WHERE event_id = ? AND user_id = ?', ev.id, req.me.id);
     if (!del.changes) await db.run('INSERT INTO event_attendees (event_id, user_id) VALUES (?, ?)', ev.id, req.me.id);
@@ -368,17 +443,139 @@ app.post('/eventos/:id/fechar', requireAuth, async (req, res) => {
 app.post('/eventos/:id/cancelar', requireAuth, async (req, res) => {
   const ev = await db.get(`SELECT photo_id FROM events WHERE id = ? AND creator_id = ? AND status = 'pending'`, req.params.id, req.me.id);
   if (ev) {
+    await db.run('DELETE FROM event_invites WHERE event_id = ?', req.params.id);
     await db.run('DELETE FROM events WHERE id = ?', req.params.id);
     await deleteImage(ev.photo_id);
   }
   res.redirect('/eventos');
 });
 
+// ---------- seguir ----------
+app.post('/u/:id/seguir', requireAuth, async (req, res) => {
+  const user = await db.get('SELECT id FROM users WHERE id = ?', req.params.id);
+  if (user && user.id !== req.me.id) {
+    const del = await db.run('DELETE FROM follows WHERE follower_id = ? AND followee_id = ?', req.me.id, user.id);
+    if (!del.changes) await db.run('INSERT INTO follows (follower_id, followee_id, created_at) VALUES (?, ?, ?)', req.me.id, user.id, Date.now());
+  }
+  res.redirect(`/u/${req.params.id}`);
+});
+
+for (const [route, label, sql] of [
+  ['seguidores', 'Seguidores', 'SELECT follower_id FROM follows WHERE followee_id = ?'],
+  ['a-seguir', 'A seguir', 'SELECT followee_id FROM follows WHERE follower_id = ?'],
+]) {
+  app.get(`/u/:id/${route}`, requireAuth, async (req, res) => {
+    const user = await db.get('SELECT id, name FROM users WHERE id = ?', req.params.id);
+    if (!user) return res.status(404).render('message', { title: 'Não encontrado', heading: 'Perfil não encontrado', text: '' });
+    const people = await db.all(`SELECT id, name, school, course, year, praxe, relationship, photo_id FROM users
+                                 WHERE id IN (${sql}) ORDER BY name COLLATE NOCASE`, user.id);
+    res.render('seguidores', { title: `${label} · ${user.name}`, user, people, route, label });
+  });
+}
+
+// ---------- stories ----------
+// Só quem segue a pessoa (ou a própria) vê as stories dela.
+const canSeeStoriesOf = async (meId, userId) =>
+  meId === userId || Boolean(await db.get('SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?', meId, userId));
+
+app.get('/stories/nova', requireAuth, (req, res) => res.render('story-nova', { title: 'Nova story' }));
+
+app.post('/stories/nova', requireAuth, photoUpload, async (req, res) => {
+  const fail = (error) => res.status(400).render('story-nova', { title: 'Nova story', error });
+  if (req.uploadError) return fail(req.uploadError);
+  if (!req.file) return fail('Escolhe uma foto.');
+  let imageId;
+  try { imageId = await saveImage(req.file, 'story'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
+  const now = Date.now();
+  await db.run('INSERT INTO stories (user_id, image_id, created_at, expires_at) VALUES (?, ?, ?, ?)', req.me.id, imageId, now, now + STORY_TTL_MS);
+  res.redirect('/eventos');
+});
+
+app.get('/stories/:userId', requireAuth, async (req, res) => {
+  const user = await db.get('SELECT id, name, photo_id FROM users WHERE id = ?', req.params.userId);
+  if (!user || !await canSeeStoriesOf(req.me.id, user.id)) return res.redirect('/eventos');
+  const stories = await db.all(`SELECT s.*, (SELECT COUNT(*) FROM story_views v WHERE v.story_id = s.id) AS views,
+                                  EXISTS (SELECT 1 FROM story_views v WHERE v.story_id = s.id AND v.user_id = ?) AS seen
+                                FROM stories s WHERE s.user_id = ? AND s.expires_at > ? ORDER BY s.created_at`, req.me.id, user.id, Date.now());
+  if (!stories.length) return res.redirect('/eventos');
+  // Começa na primeira que ainda não foi vista.
+  const start = Math.max(0, stories.findIndex((st) => !st.seen));
+  res.render('story', { title: `Stories · ${user.name}`, user, stories, start, mine: user.id === req.me.id });
+});
+
+app.post('/stories/:id/visto', requireAuth, async (req, res) => {
+  const st = await db.get('SELECT user_id FROM stories WHERE id = ? AND expires_at > ?', req.params.id, Date.now());
+  if (st && st.user_id !== req.me.id && await canSeeStoriesOf(req.me.id, st.user_id)) {
+    await db.run('INSERT OR IGNORE INTO story_views (story_id, user_id) VALUES (?, ?)', req.params.id, req.me.id);
+  }
+  res.status(204).end();
+});
+
+app.post('/stories/:id/apagar', requireAuth, async (req, res) => {
+  const st = await db.get('SELECT id, image_id FROM stories WHERE id = ? AND user_id = ?', req.params.id, req.me.id);
+  if (st) {
+    await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
+    await db.run('DELETE FROM stories WHERE id = ?', st.id);
+    await deleteImage(st.image_id);
+  }
+  res.redirect('/eventos');
+});
+
+// ---------- mensagens ----------
+app.get('/mensagens', requireAuth, async (req, res) => {
+  const me = Number(req.me.id);
+  const conversations = await db.all(`
+    WITH c AS (
+      SELECT CASE WHEN sender_id = ${me} THEN recipient_id ELSE sender_id END AS other_id, MAX(id) AS last_id
+      FROM messages WHERE sender_id = ${me} OR recipient_id = ${me} GROUP BY other_id
+    )
+    SELECT c.other_id, u.name, u.photo_id, m.body, m.sender_id, m.created_at,
+      (SELECT COUNT(*) FROM messages x WHERE x.sender_id = c.other_id AND x.recipient_id = ${me} AND x.read_at IS NULL) AS unread
+    FROM c JOIN messages m ON m.id = c.last_id JOIN users u ON u.id = c.other_id
+    ORDER BY c.last_id DESC LIMIT 50`);
+  res.render('mensagens', { title: 'Mensagens', conversations });
+});
+
+const messagesBetween = (a, b, afterId = 0) => db.all(`SELECT id, sender_id, body, created_at FROM messages
+  WHERE ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) AND id > ?
+  ORDER BY id DESC LIMIT 100`, a, b, b, a, afterId).then((rows) => rows.reverse());
+const markRead = (meId, otherId) =>
+  db.run('UPDATE messages SET read_at = ? WHERE recipient_id = ? AND sender_id = ? AND read_at IS NULL', Date.now(), meId, otherId);
+const messageJson = (m) => ({ id: m.id, mine: undefined, body: m.body, time: fmtTime(m.created_at), sender_id: m.sender_id });
+
+app.get('/mensagens/:id', requireAuth, async (req, res) => {
+  const other = await db.get('SELECT id, name, photo_id, course FROM users WHERE id = ?', req.params.id);
+  if (!other || other.id === req.me.id) return res.redirect('/mensagens');
+  const messages = await messagesBetween(req.me.id, other.id);
+  await markRead(req.me.id, other.id);
+  res.locals.unreadCount = (await db.get('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL', req.me.id)).n;
+  res.render('conversa', { title: other.name, other, messages });
+});
+
+// Usado pela página da conversa para ir buscar mensagens novas a cada poucos segundos.
+app.get('/mensagens/:id/novas', requireAuth, async (req, res) => {
+  const otherId = Number(req.params.id);
+  const messages = await messagesBetween(req.me.id, otherId, Number(req.query.depois) || 0);
+  if (messages.some((m) => m.sender_id === otherId)) await markRead(req.me.id, otherId);
+  res.json(messages.map((m) => ({ ...messageJson(m), mine: m.sender_id === req.me.id })));
+});
+
+app.post('/mensagens/:id', requireAuth, async (req, res) => {
+  const other = await db.get('SELECT id FROM users WHERE id = ?', req.params.id);
+  const body = str(req.body.body, 2000);
+  const wantsJson = (req.get('accept') || '').includes('application/json');
+  if (!other || other.id === req.me.id || !body) return wantsJson ? res.status(400).json({ error: 'Mensagem vazia.' }) : res.redirect(`/mensagens/${req.params.id}`);
+  const now = Date.now();
+  const { lastInsertRowid } = await db.run('INSERT INTO messages (sender_id, recipient_id, body, created_at) VALUES (?, ?, ?, ?)', req.me.id, other.id, body, now);
+  if (wantsJson) return res.json({ ...messageJson({ id: lastInsertRowid, sender_id: req.me.id, body, created_at: now }), mine: true });
+  res.redirect(`/mensagens/${other.id}#fim`);
+});
+
 // ---------- admin ----------
 app.get('/admin', requireAuth, requireAdmin, async (req, res) => {
   const q = (status, order) =>
     db.all(`SELECT e.*, u.name AS creator_name, u.email AS creator_email FROM events e JOIN users u ON u.id = e.creator_id
-                WHERE e.status = ? ORDER BY ${order} LIMIT 30`, status);
+                WHERE e.status = ? AND e.visibility = 'public' ORDER BY ${order} LIMIT 30`, status);
   res.render('admin', {
     title: 'Admin',
     pending: await q('pending', 'e.starts_at'),

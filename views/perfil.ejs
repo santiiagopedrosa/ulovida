@@ -1,9 +1,18 @@
 <%- include('partials/header') %>
 <section class="profile">
-  <%- include('partials/avatar', { u: user, big: true, vt: true }) %>
+  <% if (hasStory) { %>
+    <a class="story-ring big" href="/stories/<%= user.id %>" title="Ver stories"><%- include('partials/avatar', { u: user, big: true, vt: true }) %></a>
+  <% } else { %>
+    <%- include('partials/avatar', { u: user, big: true, vt: true }) %>
+  <% } %>
   <div class="profile-main">
     <h1><%= user.name %></h1>
-    <p class="muted"><%= [user.course, user.year].filter(Boolean).join(' · ') %></p>
+    <p class="muted"><%= [user.school, user.course, user.year].filter(Boolean).join(' · ') %></p>
+    <div class="counts">
+      <a href="/u/<%= user.id %>/seguidores"><strong><%= followers %></strong> <%= followers === 1 ? 'seguidor' : 'seguidores' %></a>
+      <a href="/u/<%= user.id %>/a-seguir"><strong><%= following %></strong> a seguir</a>
+      <% if (followsMe && me.id !== user.id) { %><span class="tag">Segue-te</span><% } %>
+    </div>
     <div class="facts">
       <div><span class="label">Praxe</span><%= PRAXE[user.praxe] || '—' %></div>
       <div><span class="label">Relação</span><%= RELACAO[user.relationship] || '—' %></div>
@@ -12,7 +21,21 @@
       <% } %>
     </div>
     <% if (user.bio) { %><p class="bio"><%= user.bio %></p><% } %>
-    <% if (me.id === user.id) { %><a class="btn ghost small" href="/perfil/editar">Editar perfil</a><% } %>
+    <div class="row">
+      <% if (me.id === user.id) { %>
+        <a class="btn ghost small" href="/perfil/editar">Editar perfil</a>
+        <a class="btn ghost small" href="/stories/nova"><%- include('partials/icon', { name: 'plus' }) %> Story</a>
+      <% } else { %>
+        <form method="post" action="/u/<%= user.id %>/seguir">
+          <% if (iFollow) { %>
+            <button class="btn ghost small"><%- include('partials/icon', { name: 'check' }) %> A seguir</button>
+          <% } else { %>
+            <button class="btn small"><%= followsMe ? 'Seguir de volta' : 'Seguir' %></button>
+          <% } %>
+        </form>
+        <a class="btn ghost small" href="/mensagens/<%= user.id %>"><%- include('partials/icon', { name: 'message' }) %> Mensagem</a>
+      <% } %>
+    </div>
   </div>
 </section>
 

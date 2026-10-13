@@ -81,6 +81,47 @@ await client.executeMultiple(`
     mime       TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS follows (
+    follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    followee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at  INTEGER NOT NULL,
+    PRIMARY KEY (follower_id, followee_id)
+  );
+  CREATE INDEX IF NOT EXISTS follows_followee ON follows (followee_id);
+
+  -- Stories: uma foto que desaparece ao fim de 24h.
+  CREATE TABLE IF NOT EXISTS stories (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    image_id   INTEGER NOT NULL REFERENCES images(id),
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS stories_user ON stories (user_id, expires_at);
+  CREATE TABLE IF NOT EXISTS story_views (
+    story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (story_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id           INTEGER PRIMARY KEY,
+    sender_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body         TEXT NOT NULL,
+    created_at   INTEGER NOT NULL,
+    read_at      INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS messages_pair ON messages (sender_id, recipient_id, id);
+  CREATE INDEX IF NOT EXISTS messages_unread ON messages (recipient_id, read_at);
+
+  -- Convidados de eventos privados com visibilidade "selected".
+  CREATE TABLE IF NOT EXISTS event_invites (
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (event_id, user_id)
+  );
 `);
 
 // Colunas acrescentadas depois da primeira versão: adiciona-as se a BD ainda não as tiver.
@@ -92,6 +133,9 @@ const migrations = [
   // Códigos de 6 dígitos enviados por email (hash) e tentativas falhadas.
   ['email_tokens', 'code_hash', 'TEXT'],
   ['email_tokens', 'attempts', 'INTEGER NOT NULL DEFAULT 0'],
+  ['users', 'school', "TEXT NOT NULL DEFAULT ''"],
+  // 'public' (precisa de aprovação), 'mutual' (seguidores mútuos) ou 'selected' (convidados).
+  ['events', 'visibility', "TEXT NOT NULL DEFAULT 'public'"],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

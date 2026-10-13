@@ -21,7 +21,7 @@
       </div>
     </div>
     <label>Nome <input name="name" value="<%= form.name %>" maxlength="60" autocomplete="name" required></label>
-    <label>Curso <input name="course" value="<%= form.course %>" maxlength="80"></label>
+    <%- include('partials/curso-campos', { form }) %>
     <label>Ano
       <select name="year" required>
         <% for (const a of ANOS) { %><option <%= form.year === a ? 'selected' : '' %>><%= a %></option><% } %>

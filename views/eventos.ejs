@@ -6,6 +6,28 @@
   </div>
   <a class="btn" href="/eventos/novo"><%- include('partials/icon', { name: 'plus' }) %> Criar evento</a>
 </div>
+<div class="stories-bar" aria-label="Stories">
+  <% const mineHas = stories.length && stories[0].id === me.id; %>
+  <% if (!mineHas) { %>
+    <a class="story-item" href="/stories/nova">
+      <span class="story-add"><%- include('partials/avatar', { u: me }) %><i><%- include('partials/icon', { name: 'plus' }) %></i></span>
+      <span class="story-name">A tua story</span>
+    </a>
+  <% } %>
+  <% for (const st of stories) { %>
+    <a class="story-item" href="/stories/<%= st.id %>">
+      <span class="story-ring <%= st.unseen ? '' : 'seen' %>"><%- include('partials/avatar', { u: st }) %></span>
+      <span class="story-name"><%= st.id === me.id ? 'A tua story' : st.name.split(' ')[0] %></span>
+    </a>
+  <% } %>
+  <% if (mineHas) { %>
+    <a class="story-item" href="/stories/nova" title="Adicionar story">
+      <span class="story-add only"><%- include('partials/icon', { name: 'plus' }) %></span>
+      <span class="story-name">Adicionar</span>
+    </a>
+  <% } %>
+</div>
+
 <% if (created) { %><div class="notice" role="status"><%- include('partials/icon', { name: 'check' }) %><span>Pedido enviado! O evento aparece aqui assim que for aprovado.</span></div><% } %>
 
 <nav class="tabs" aria-label="Filtrar eventos">
@@ -20,7 +42,7 @@
       <% const d = fmtParts(e.starts_at); %>
       <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
       <div class="event-body">
-        <span class="type <%= e.type %>"><%= TIPOS[e.type] %></span>
+        <span class="type <%= e.type %>"><%= TIPOS[e.type] %></span><% if (e.visibility !== 'public') { %><span class="private"><%- include('partials/icon', { name: 'lock' }) %> <%= e.visibility === 'mutual' ? 'Seguidores mútuos' : 'Só convidados' %></span><% } %>
         <h3><%= e.title %></h3>
         <div class="meta">
           <span><%- include('partials/icon', { name: 'clock' }) %> <%= d.time %></span>

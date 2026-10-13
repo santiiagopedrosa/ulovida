@@ -6,25 +6,18 @@
   </div>
   <form method="get" class="search" role="search">
     <%- include('partials/icon', { name: 'search' }) %>
+    <% if (escola) { %><input type="hidden" name="escola" value="<%= escola %>"><% } %>
     <input name="q" value="<%= q %>" placeholder="Procurar por nome ou curso" aria-label="Procurar pessoas">
   </form>
 </div>
-<div class="grid">
-  <% for (const p of people) { %>
-    <a class="person" href="/u/<%= p.id %>">
-      <%- include('partials/avatar', { u: p, vt: true }) %>
-      <div>
-        <strong><%= p.name %></strong>
-        <div class="muted small"><%= [p.course, p.year].filter(Boolean).join(' · ') %></div>
-        <% if (p.praxe || p.relationship) { %>
-        <div class="tags">
-          <% if (p.praxe) { %><span class="tag"><%= PRAXE[p.praxe] %></span><% } %>
-          <% if (p.relationship) { %><span class="tag"><%= RELACAO[p.relationship] %></span><% } %>
-        </div>
-        <% } %>
-      </div>
-    </a>
+<nav class="tabs scroll" aria-label="Filtrar por escola">
+  <% const qs = (e) => '/pessoas?' + new URLSearchParams({ ...(e && { escola: e }), ...(q && { q }) }); %>
+  <% for (const e of ['', ...Object.keys(SCHOOLS)]) { %>
+    <a href="<%= qs(e) %>" class="<%= escola === e ? 'on' : '' %>" <%- e ? `title="${SCHOOLS[e]}"` : '' %>><%= e || 'Todas' %><% if (escola === e) { %><i class="tab-line" aria-hidden="true"></i><% } %></a>
   <% } %>
+</nav>
+<div class="grid">
+  <% for (const p of people) { %><%- include('partials/pessoa', { p, vt: true }) %><% } %>
 </div>
 <% if (!people.length) { %><p class="empty">Ninguém encontrado.</p><% } %>
 <%- include('partials/footer') %>

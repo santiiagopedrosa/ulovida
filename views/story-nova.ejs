@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<section class="panel">
+  <h1>Nova story</h1>
+  <p class="muted">Fica visível durante 24 horas para quem te segue.</p>
+  <form method="post" action="/stories/nova" class="form" enctype="multipart/form-data">
+    <img id="story-preview" class="story-preview" alt="" hidden>
+    <label class="btn ghost file-btn block">
+      <%- include('partials/icon', { name: 'camera' }) %> Escolher foto
+      <input type="file" name="photo" accept="image/*" data-max="1080" data-aspect="9/16" data-preview="story-preview" required>
+    </label>
+    <button class="btn block">Publicar story</button>
+  </form>
+</section>
+<script src="/upload.js" defer></script>
+<%- include('partials/footer') %>

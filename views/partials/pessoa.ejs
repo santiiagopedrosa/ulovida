@@ -1,0 +1,13 @@
+<a class="person" href="/u/<%= p.id %>">
+  <%- include('avatar', { u: p, vt: locals.vt }) %>
+  <div>
+    <strong><%= p.name %></strong>
+    <div class="muted small"><%= [p.school, p.course, p.year].filter(Boolean).join(' · ') %></div>
+    <% if (p.praxe || p.relationship) { %>
+    <div class="tags">
+      <% if (p.praxe) { %><span class="tag"><%= PRAXE[p.praxe] %></span><% } %>
+      <% if (p.relationship) { %><span class="tag"><%= RELACAO[p.relationship] %></span><% } %>
+    </div>
+    <% } %>
+  </div>
+</a>

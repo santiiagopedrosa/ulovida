@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<div class="pagehead">
+  <div>
+    <p class="muted small"><a href="/u/<%= user.id %>">← <%= user.name %></a></p>
+    <h1><%= label %></h1>
+  </div>
+</div>
+<nav class="tabs" aria-label="Seguidores">
+  <% for (const [r, l] of [['seguidores', 'Seguidores'], ['a-seguir', 'A seguir']]) { %>
+    <a href="/u/<%= user.id %>/<%= r %>" class="<%= route === r ? 'on' : '' %>"><%= l %><% if (route === r) { %><i class="tab-line" aria-hidden="true"></i><% } %></a>
+  <% } %>
+</nav>
+<div class="grid">
+  <% for (const p of people) { %><%- include('partials/pessoa', { p }) %><% } %>
+</div>
+<% if (!people.length) { %><p class="empty"><%= route === 'seguidores' ? 'Ainda sem seguidores.' : 'Ainda não segue ninguém.' %></p><% } %>
+<%- include('partials/footer') %>
