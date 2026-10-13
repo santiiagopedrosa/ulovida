@@ -6,7 +6,9 @@ import { sendVerificationEmail } from './mail.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+// Na Vercel, sem APP_URL definido, usa o endereço de produção que a própria Vercel fornece.
+const VERCEL_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+const APP_URL = (process.env.APP_URL || VERCEL_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const EMAIL_RE = /^[a-z0-9._%+-]+@ulo\.pt$/;
 const TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -40,10 +42,9 @@ function getCookie(req, name) {
     if (k === name) return decodeURIComponent(v.join('='));
   }
 }
+// Hora de Portugal em "YYYY-MM-DDTHH:MM" (na Vercel o servidor está em UTC).
 function nowLocal() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Lisbon' }).replace(' ', 'T').slice(0, 16);
 }
 const dateFmt = new Intl.DateTimeFormat('pt-PT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const fmtDate = (s) => dateFmt.format(new Date(s));
