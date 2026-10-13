@@ -87,4 +87,24 @@ for (const card of document.querySelectorAll('[data-tilt]')) {
     card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg');
   });
 }
+
+// Formulários que não podem ir duas vezes (ex.: enviar código): o botão fica bloqueado enquanto o pedido segue.
+for (const form of document.querySelectorAll('form[data-once]')) {
+  const btn = form.querySelector('button:not([type=button])');
+  const label = btn?.textContent;
+  form.addEventListener('submit', (e) => {
+    if (form.dataset.sending) { e.preventDefault(); return; }
+    form.dataset.sending = '1';
+    if (btn) { btn.disabled = true; btn.textContent = btn.dataset.busy || 'Aguarda…'; }
+  });
+  // Ao voltar atrás no browser, o botão fica outra vez ativo.
+  addEventListener('pageshow', () => { delete form.dataset.sending; if (btn) { btn.disabled = false; btn.textContent = label; } });
+}
+// "Já recebeste o código?": leva o email escrito para a página do código.
+document.getElementById('have-code')?.addEventListener('click', (e) => {
+  const input = document.querySelector('form[action="/registar"] input[name=email]');
+  e.preventDefault();
+  if (!input.checkValidity() || !input.value) { input.reportValidity(); input.focus(); return; }
+  location.href = `/confirmar?email=${encodeURIComponent(input.value.trim())}`;
+});
 }

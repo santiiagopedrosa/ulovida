@@ -275,9 +275,9 @@ app.post('/registar', async (req, res) => {
   if (!EMAIL_RE.test(email)) {
     return res.status(400).render('registar', { title: 'Registar', email, error: 'Só são aceites emails institucionais @ulo.pt.' });
   }
-  if (!canSend(email, req.ip)) {
-    return res.status(429).render('registar', { title: 'Registar', email, error: 'Espera um minuto antes de pedir outro código.' });
-  }
+  const toCode = (extra = '') => res.redirect(303, `/confirmar?email=${encodeURIComponent(email)}${extra}`);
+  // Código pedido há menos de um minuto (ex.: carregou duas vezes no botão): vai para a página do código na mesma.
+  if (!canSend(email, req.ip)) return toCode('&recente=1');
   // Mesma resposta exista ou não conta, para não revelar quem está registado.
   // Envia um código de 6 dígitos em vez de um link: emails sem links são menos barrados pelos filtros do Outlook.
   if (!await db.get('SELECT 1 FROM users WHERE email = ?', email)) {
@@ -285,9 +285,22 @@ app.post('/registar', async (req, res) => {
     await db.run('UPDATE email_tokens SET used = 1 WHERE email = ? AND code_hash IS NOT NULL', email);
     await db.run('INSERT INTO email_tokens (token_hash, email, expires_at, code_hash) VALUES (?, ?, ?, ?)',
       sha(newToken()), email, Date.now() + CODE_TTL_MS, sha(`${email}:${code}`));
-    await sendVerificationCode(email, code);
+    try {
+      await sendVerificationCode(email, code);
+    } catch (err) {
+      console.error('Falha ao enviar o código:', err.message);
+      return res.status(502).render('registar', { title: 'Registar', email, error: 'Não foi possível enviar o email. Tenta outra vez daqui a pouco.' });
+    }
   }
-  res.render('codigo', { title: 'Confirma o teu email', email, code: '' });
+  // Redireciona (em vez de mostrar logo a página): recarregar ou voltar da app de email não volta a enviar o formulário.
+  toCode();
+});
+
+// Página para escrever o código (também serve para quem já recebeu o código e voltou ao site).
+app.get('/confirmar', (req, res) => {
+  const email = str(req.query.email, 120).toLowerCase();
+  if (!EMAIL_RE.test(email)) return res.redirect('/registar');
+  res.render('codigo', { title: 'Confirma o teu email', email, code: '', recent: req.query.recente === '1' });
 });
 
 app.post('/confirmar', async (req, res) => {
