@@ -1,5 +1,6 @@
 <%- include('partials/header') %>
 <section class="hero">
+  <div class="hero-text">
   <p class="eyebrow"><%- include('partials/icon', { name: 'lock' }) %> Acesso só com email @ulo.pt</p>
   <% let i = 0; const words = (t) => t.split(' ').map((w) => `<span style="--i:${i++}">${w}</span>`).join(' '); %>
   <h1 class="blur-text" aria-label="A vida académica, toda num sítio."><span aria-hidden="true"><%- words('A vida académica,') %> <em><%- words('toda num sítio.') %></em></span></h1>
@@ -12,6 +13,10 @@
     <div><b data-count="<%= memberCount %>"><%= memberCount %></b><span>membros verificados</span></div>
     <div><b data-count="5">5</b><span>escolas</span></div>
     <div><b data-count="198">198</b><span>cursos</span></div>
+  </div>
+  </div>
+  <div class="hero-card" aria-hidden="true">
+    <%- include('partials/member-card', { u: { id: memberCount + 1, name: 'O teu nome', course: 'O teu curso', year: '', school: 'ESTG', created_at: new Date().toISOString().slice(0, 19).replace('T', ' ') } }) %>
   </div>
 </section>
 <div class="marquee" aria-hidden="true">

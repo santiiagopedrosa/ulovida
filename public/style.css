@@ -611,7 +611,8 @@ fieldset.vis { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; justif
   body:has(.dock) main.wrap { padding-bottom: 64px; }
 
   /* Ilha vertical à esquerda */
-  .dock { left: 20px; right: auto; top: 50%; bottom: auto; translate: 0 -50%; margin: 0; flex-direction: column; gap: 4px; padding: 8px; }
+  /* A ilha fica encostada ao conteúdo, mesmo em ecrãs muito largos. */
+  .dock { left: max(20px, calc((100vw - 1160px) / 2 + 20px)); right: auto; top: 50%; bottom: auto; translate: 0 -50%; margin: 0; flex-direction: column; gap: 4px; padding: 8px; }
   .dock a { height: 48px; width: 48px; min-width: 0; padding: 0; }
   .dock a.on { padding: 0; }
   .dock-label { display: none; }
@@ -648,9 +649,21 @@ fieldset.vis { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; justif
   .dm-empty-icon .icon { width: 32px; height: 32px; }
   .dm-empty strong { font: 900 1.4rem var(--font-display); }
 
-  /* Página inicial mais larga */
-  .hero { padding: 72px 64px 56px; }
-  .features div { min-height: 220px; padding: 32px; }
+  /* Página inicial: texto à esquerda, cartão de membro de exemplo a flutuar à direita */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: center; gap: 48px; padding: 80px 0 64px; }
+  .hero .hero-card { display: flex; justify-content: center; rotate: -7deg; animation: float 6s ease-in-out infinite; }
+  .hero-card .member-card { width: min(100%, 400px); }
+  /* Faixa e blocos de cor de ponta a ponta; o texto alinha com o resto da página. */
+  .marquee, .features { width: 100vw; margin-left: calc(50% - 50vw); }
+  .features div { min-height: 240px; padding: 44px 40px; }
+  .features div:first-child { padding-left: max(40px, calc((100vw - 1160px) / 2 + 40px)); }
+  .features div:last-child { padding-right: max(40px, calc((100vw - 1160px) / 2 + 40px)); }
+  .features div > * { max-width: 340px; }
+
+  /* Perfil: informações à esquerda, cartão de membro à direita */
+  .profile { flex-wrap: nowrap; align-items: flex-start; }
+  .profile .profile-main { min-width: 0; }
+  .profile .profile-card { flex: 0 1 380px; margin: 0; }
 }
 @media (max-width: 1023px) { .dock.in-chat { display: none; } }
 
@@ -693,7 +706,9 @@ h1 .seal { width: .6em; height: .6em; vertical-align: .05em; }
 @keyframes stamp-in { 0% { opacity: 0; scale: 2.6; rotate: 10deg; } 60% { opacity: 1; scale: .9; } 100% { scale: 1; rotate: -12deg; } }
 
 /* Cartão de membro */
-.profile-card { margin: 28px 0 8px; }
+.profile-card { flex-basis: 100%; margin: 4px 0 0; }
+.hero-card { display: none; }
+body { overflow-x: clip; }
 .member-card {
   --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 30%;
   position: relative; overflow: hidden; width: min(100%, 380px); aspect-ratio: 1.586; padding: 20px 22px;
@@ -733,6 +748,7 @@ h1 .seal { width: .6em; height: .6em; vertical-align: .05em; }
 .marquee span { font: 900 1rem var(--font-display); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .marquee i { width: 8px; height: 8px; border-radius: 50%; background: var(--green-900); flex: none; }
 @keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
 @media (max-width: 640px) { .marquee { margin: 0 -20px; } .hero-stats { gap: 24px; } .hero-stats b { font-size: 2rem; } }
 
 /* Brilho a passar no botão principal */
