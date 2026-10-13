@@ -1,5 +1,4 @@
 <%- include('partials/header') %>
-<p class="muted small back-link"><a href="/eventos">← Eventos</a></p>
 <% const d = fmtParts(e.starts_at); %>
 <article class="event <%= e.type %> event-detail" id="e<%= e.id %>">
   <% if (e.im_going) { %><span class="stamp" aria-hidden="true">Confirmado</span><% } %>

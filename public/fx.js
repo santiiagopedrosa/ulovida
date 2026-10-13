@@ -8,7 +8,7 @@ const fmt = new Intl.NumberFormat('pt-PT');
 function countUp(el) {
   const target = Number(el.dataset.count) || 0;
   if (calm || target === 0) { el.textContent = fmt.format(target); return; }
-  const t0 = performance.now(), dur = 1300;
+  const t0 = performance.now(), dur = 800;
   const step = (now) => {
     const p = Math.min(1, (now - t0) / dur);
     el.textContent = fmt.format(Math.round(target * (1 - (1 - p) ** 3)));
@@ -26,7 +26,7 @@ const io = new IntersectionObserver((entries) => {
     if (e.target.dataset.count !== undefined) countUp(e.target);
     else e.target.classList.add('in');
   }
-}, { rootMargin: '0px 0px -8% 0px' });
+}, { rootMargin: '0px 0px 6% 0px' });
 
 document.querySelectorAll('[data-count]').forEach((el) => { el.textContent = '0'; io.observe(el); });
 if (!calm) {
@@ -34,7 +34,7 @@ if (!calm) {
     if (el.getBoundingClientRect().top < innerHeight) return; // o que já se vê usa a animação de entrada
     el.style.animation = 'none';
     el.classList.add('reveal');
-    el.style.setProperty('--d', `${(k % 4) * 60}ms`);
+    el.style.setProperty('--d', `${(k % 4) * 35}ms`);
     io.observe(el);
   });
 }

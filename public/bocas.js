@@ -48,7 +48,7 @@ for (const form of document.querySelectorAll('.fogo-form')) {
         f.style.setProperty('--bx', `${(Math.random() - 0.5) * 60}px`);
         f.style.setProperty('--by', `${-30 - Math.random() * 50}px`);
         btn.append(f);
-        setTimeout(() => f.remove(), 700);
+        setTimeout(() => f.remove(), 600);
       }
     }
     try {
