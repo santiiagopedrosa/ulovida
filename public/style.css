@@ -36,8 +36,9 @@
   --radius: 4px;
   --radius-sm: 3px;
   --ease: cubic-bezier(.2, .7, .2, 1);
-  --font: "Source Sans 3", system-ui, -apple-system, sans-serif;
-  --font-display: "Archivo", "Source Sans 3", system-ui, sans-serif;
+  /* Avenir Next vem instalada em iPhone/Mac; nos outros aparelhos usa a Figtree (gratuita e parecida). */
+  --font: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
+  --font-display: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {

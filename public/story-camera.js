@@ -137,7 +137,7 @@ cam.querySelector('[data-act=back]').addEventListener('click', () => {
 // ---------- texto ----------
 // Cada texto guarda posição (x, y) e tamanho como fração do enquadramento, para sair igual na imagem final.
 const COLORS = ['#ffffff', '#111111', '#e8b64c', '#9f1d35', '#ff5c8a', '#4cc3ff', '#7be07b'];
-const FONT = (px) => `800 ${px}px Archivo, system-ui, sans-serif`;
+const FONT = (px) => `800 ${px}px "Avenir Next", Avenir, Figtree, system-ui, sans-serif`;
 const MAX_TEXT_W = 0.86;
 const textsLayer = cam.querySelector('.cam-texts');
 const editor = cam.querySelector('.text-editor');
