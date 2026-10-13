@@ -42,7 +42,7 @@
       <img id="event-preview" class="event-photo" alt="" hidden>
       <label class="btn ghost small file-btn">
         <%- include('partials/icon', { name: 'image' }) %> Escolher foto
-        <input type="file" name="photo" accept="image/*" data-max="1600" data-aspect="16/9" data-preview="event-preview">
+        <input type="file" name="photo" accept="image/*" data-max="1600" data-aspects="16/9,1/1,4/5" data-preview="event-preview">
       </label>
     </div>
     <button class="btn block" id="event-submit" data-review="Enviar para aprovação" data-publish="Publicar"><%= form.visibility === 'public' && !me.is_admin ? 'Enviar para aprovação' : 'Publicar' %></button>

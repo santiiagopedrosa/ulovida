@@ -2,7 +2,7 @@
 <p class="muted small back-link"><a href="/eventos">← Eventos</a></p>
 <% const d = fmtParts(e.starts_at); %>
 <article class="event <%= e.type %> event-detail" id="e<%= e.id %>">
-  <% if (e.im_going) { %><span class="stamp" aria-hidden="true">Vou</span><% } %>
+  <% if (e.im_going) { %><span class="stamp" aria-hidden="true">Confirmado</span><% } %>
   <div class="date" aria-label="<%= fmtDate(e.starts_at) %>"><span class="wd"><%= d.weekday %></span><span class="d"><%= d.day %></span><span class="m"><%= d.month %></span></div>
   <div class="event-body">
     <span class="type <%= e.type %>"><%= TIPOS[e.type] %></span><% if (e.visibility !== 'public') { %><span class="private"><%- include('partials/icon', { name: 'lock' }) %> <%= e.visibility === 'mutual' ? 'Seguidores mútuos' : 'Só convidados' %></span><% } %>

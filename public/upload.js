@@ -2,13 +2,19 @@
 // O resultado já recortado e reduzido substitui o ficheiro no formulário, por isso o envio fica leve.
 // Sem JavaScript, o envio normal continua a funcionar e o servidor trata da foto.
 
-function openCropper(bitmap, { aspect, ratio, round }) {
+const ASPECT_LABELS = { '16/9': 'Horizontal', '1/1': 'Quadrada', '4/5': 'Vertical', '9/16': 'Vertical' };
+const ratioOf = (a) => { const [w, h] = a.split('/').map(Number); return w / (h || 1); };
+
+// aspects: lista de formatos possíveis (ex.: ['16/9', '1/1', '4/5']); start: o que aparece primeiro.
+function openCropper(bitmap, { aspects, start, round }) {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog');
     dialog.className = 'cropper';
     dialog.innerHTML = `
       <p class="cropper-title">Ajustar foto</p>
-      <div class="cropper-stage ${round ? 'round' : ''}" style="aspect-ratio: ${aspect}; width: min(100%, calc(60vh * ${ratio})); margin: 0 auto">
+      ${aspects.length > 1 ? `<div class="cropper-aspects" role="radiogroup" aria-label="Formato">${aspects.map((a) =>
+        `<button type="button" role="radio" data-aspect="${a}"><i style="aspect-ratio: ${a.replace('/', ' / ')}"></i>${ASPECT_LABELS[a] || a}</button>`).join('')}</div>` : ''}
+      <div class="cropper-stage ${round ? 'round' : ''}" style="margin: 0 auto">
         <canvas></canvas>
       </div>
       <label class="cropper-zoom"><span class="muted small">Zoom</span>
@@ -17,7 +23,7 @@ function openCropper(bitmap, { aspect, ratio, round }) {
       <p class="muted small cropper-tip">Arrasta para posicionar.</p>
       <div class="row cropper-actions">
         <button type="button" class="btn ghost" data-act="cancel">Cancelar</button>
-        <button type="button" class="btn" data-act="ok">Usar foto</button>
+        <button type="button" class="btn" data-act="ok" autofocus>Usar foto</button>
       </div>`;
     document.body.append(dialog);
     const stage = dialog.querySelector('.cropper-stage');
@@ -26,7 +32,16 @@ function openCropper(bitmap, { aspect, ratio, round }) {
     const ctx = canvas.getContext('2d');
     dialog.showModal();
 
-    let W, H, base, zoom = 1, ox = 0, oy = 0;
+    let W, H, base, zoom = 1, ox = 0, oy = 0, current = start;
+    // Muda o formato do enquadramento e recomeça o enquadramento.
+    const setAspect = (a) => {
+      current = a;
+      stage.style.aspectRatio = a.replace('/', ' / ');
+      stage.style.width = `min(100%, calc(60vh * ${ratioOf(a)}))`;
+      dialog.querySelectorAll('.cropper-aspects button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.aspect === a)));
+      zoom = 1; range.value = 1;
+      requestAnimationFrame(layout);
+    };
     const scale = () => base * zoom;
     const clamp = () => {
       const s = scale();
@@ -54,7 +69,8 @@ function openCropper(bitmap, { aspect, ratio, round }) {
       oy = py - (py - oy) * (scale() / s0);
       range.value = z; clamp(); draw();
     };
-    requestAnimationFrame(layout);
+    setAspect(start);
+    dialog.querySelectorAll('.cropper-aspects button').forEach((b) => b.addEventListener('click', () => setAspect(b.dataset.aspect)));
 
     range.addEventListener('input', () => setZoom(Number(range.value)));
     stage.addEventListener('wheel', (e) => {
@@ -92,15 +108,15 @@ function openCropper(bitmap, { aspect, ratio, round }) {
     const close = (result) => { dialog.close(); dialog.remove(); resolve(result); };
     dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(null); });
     dialog.querySelector('[data-act=cancel]').addEventListener('click', () => close(null));
-    dialog.querySelector('[data-act=ok]').addEventListener('click', () => close({ W, H, ox, oy, s: scale() }));
+    dialog.querySelector('[data-act=ok]').addEventListener('click', () => close({ W, H, ox, oy, s: scale(), aspect: current }));
   });
 }
 
 for (const input of document.querySelectorAll('input[type=file][data-max]')) {
   const preview = document.getElementById(input.dataset.preview);
   const original = preview?.getAttribute('src');
-  const [aw, ah] = (input.dataset.aspect || '1').split('/').map(Number);
-  const aspect = aw / (ah || 1);
+  // data-aspects="16/9,1/1,4/5" deixa escolher o formato; data-aspect fixa um só.
+  const aspects = (input.dataset.aspects || input.dataset.aspect || '1/1').split(',').map((a) => a.trim());
 
   input.addEventListener('change', async () => {
     const file = input.files[0];
@@ -108,15 +124,21 @@ for (const input of document.querySelectorAll('input[type=file][data-max]')) {
     let bitmap;
     try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { return; }
 
-    const crop = await openCropper(bitmap, { aspect: `${aw} / ${ah || 1}`, ratio: aspect, round: 'round' in input.dataset });
+    // Começa no formato mais parecido com a foto (vertical, quadrada ou horizontal).
+    const photo = bitmap.width / bitmap.height;
+    const start = aspects.reduce((best, a) => (Math.abs(ratioOf(a) - photo) < Math.abs(ratioOf(best) - photo) ? a : best), aspects[0]);
+    const crop = await openCropper(bitmap, { aspects, start, round: 'round' in input.dataset });
     if (!crop) {
       // Cancelado: limpa a escolha e repõe a foto anterior.
       input.value = '';
       if (preview) { if (original) preview.src = original; else preview.hidden = true; }
       return;
     }
-    const outW = Number(input.dataset.max);
-    const outH = Math.round(outW / aspect);
+    const ratio = ratioOf(crop.aspect);
+    // data-max é o lado maior da imagem final.
+    const max = Number(input.dataset.max);
+    const outW = Math.round(ratio >= 1 ? max : max * ratio);
+    const outH = Math.round(ratio >= 1 ? max / ratio : max);
     const f = outW / crop.W;
     const canvas = document.createElement('canvas');
     canvas.width = outW; canvas.height = outH;
@@ -126,6 +148,7 @@ for (const input of document.querySelectorAll('input[type=file][data-max]')) {
     const dt = new DataTransfer();
     dt.items.add(new File([blob], 'foto.jpg', { type: 'image/jpeg' }));
     input.files = dt.files;
-    if (preview) { preview.src = URL.createObjectURL(blob); preview.hidden = false; }
+    if (preview) { preview.src = URL.createObjectURL(blob); preview.hidden = false; preview.dataset.shape = ratio < 0.95 ? 'tall' : ratio > 1.05 ? 'wide' : 'square'; }
+    input.dispatchEvent(new CustomEvent('cropped', { bubbles: true }));
   });
 }

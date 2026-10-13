@@ -20,6 +20,17 @@ for (const t of document.querySelectorAll('.composer textarea, .comment-form tex
   t.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) t.form.requestSubmit(); });
 }
 
+// Foto na boca: mostra a pré-visualização depois de ajustada e deixa tirá-la.
+const photoInput = document.querySelector('.composer input[type=file]');
+const photoBox = document.querySelector('.composer-photo');
+if (photoInput && photoBox) {
+  photoInput.addEventListener('cropped', () => { photoBox.hidden = false; });
+  photoBox.querySelector('.composer-photo-del').addEventListener('click', () => {
+    photoInput.value = '';
+    photoBox.hidden = true;
+  });
+}
+
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 for (const form of document.querySelectorAll('.fogo-form')) {
   form.addEventListener('submit', async (e) => {

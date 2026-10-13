@@ -181,6 +181,8 @@ const migrations = [
   ['story_views', 'viewed_at', 'INTEGER NOT NULL DEFAULT 0'],
   // Mensagem enviada como resposta a uma story.
   ['messages', 'story_id', 'INTEGER'],
+  // Imagem opcional numa boca.
+  ['posts', 'image_id', 'INTEGER'],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

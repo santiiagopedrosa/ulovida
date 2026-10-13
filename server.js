@@ -503,14 +503,19 @@ app.get('/bocas', requireAuth, async (req, res) => {
   res.render('bocas', { title: 'Bocas', bocas, max: BOCA_MAX, body: '' });
 });
 
-app.post('/bocas', requireAuth, async (req, res) => {
+app.post('/bocas', requireAuth, photoUpload, async (req, res) => {
   const body = str(req.body.body, BOCA_MAX + 20);
   const fail = async (error) => res.status(400).render('bocas', {
     title: 'Bocas', bocas: await db.all(`${bocaSelect(req.me.id)} ORDER BY p.id DESC LIMIT 60`), max: BOCA_MAX, body, error });
-  if (!body) return fail('Escreve alguma coisa.');
+  if (req.uploadError) return fail(req.uploadError);
+  if (!body && !req.file) return fail('Escreve alguma coisa ou junta uma foto.');
   if (body.length > BOCA_MAX) return fail(`Máximo de ${BOCA_MAX} caracteres.`);
   if (tooSoon(req.me.id, 'boca', 15_000)) return fail('Calma! Espera uns segundos antes de mandar outra boca.');
-  const { lastInsertRowid } = await db.run('INSERT INTO posts (user_id, body, created_at) VALUES (?, ?, ?)', req.me.id, body, Date.now());
+  let imageId = null;
+  if (req.file) {
+    try { imageId = await saveImage(req.file, 'event'); } catch { return fail('Esse ficheiro não é uma imagem válida.'); }
+  }
+  const { lastInsertRowid } = await db.run('INSERT INTO posts (user_id, body, created_at, image_id) VALUES (?, ?, ?, ?)', req.me.id, body, Date.now(), imageId);
   res.redirect(`/bocas#b${lastInsertRowid}`);
 });
 
@@ -531,11 +536,12 @@ app.post('/bocas/:id/fogo', requireAuth, async (req, res) => {
 });
 
 app.post('/bocas/:id/apagar', requireAuth, async (req, res) => {
-  const boca = await db.get('SELECT id, user_id FROM posts WHERE id = ?', req.params.id);
+  const boca = await db.get('SELECT id, user_id, image_id FROM posts WHERE id = ?', req.params.id);
   if (boca && (boca.user_id === req.me.id || req.me.is_admin)) {
     await db.run("DELETE FROM comments WHERE target_type = 'post' AND target_id = ?", boca.id);
     await db.run('DELETE FROM post_likes WHERE post_id = ?', boca.id);
     await db.run('DELETE FROM posts WHERE id = ?', boca.id);
+    await deleteImage(boca.image_id);
   }
   res.redirect('/bocas');
 });

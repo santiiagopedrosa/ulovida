@@ -220,7 +220,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--i
 .form .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-weight: 400; color: var(--muted); }
 .check input { width: 18px; min-height: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
 img.avatar { object-fit: cover; background: var(--surface); }
-.event-photo { display: block; width: 100%; max-width: 520px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); margin-top: 14px; background: var(--surface); }
+.event-photo { display: block; width: auto; max-width: min(100%, 520px); max-height: 560px; height: auto; border-radius: var(--radius); border: 1px solid var(--line); margin-top: 14px; background: var(--surface); }
 .field .event-photo { margin-top: 0; }
 [hidden] { display: none !important; }
 
@@ -295,7 +295,7 @@ img.avatar { object-fit: cover; background: var(--surface); }
 .meta a { color: var(--ink-2); }
 .event-body .bio { color: var(--ink-2); font-size: .95rem; margin: 10px 0 0; }
 .event-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-@media (max-width: 480px) { .event { grid-template-columns: 64px 1fr; gap: 14px; } .date { padding: 8px 8px 10px; } .date .d { font-size: 1.8rem; } .event-body h3 { font-size: 1.2rem; } }
+@media (max-width: 480px) { .date .d { font-size: 1.9rem; } .event-body h3 { font-size: 1.2rem; } }
 
 .type { display: inline-flex; align-items: center; gap: 6px; font: 800 .72rem var(--font-display); text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); margin-bottom: 6px; }
 .type::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
@@ -682,15 +682,38 @@ h1 .seal { width: .6em; height: .6em; vertical-align: .05em; }
 .moment-plus { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--yellow); color: var(--green-900); }
 .moments-empty { align-self: center; margin: 0 0 0 8px; max-width: 220px; }
 
-/* Eventos como bilhetes: picotado entre a data e o resto */
-.date { position: relative; -webkit-mask: radial-gradient(circle 8px at 100% 0, transparent 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 8px at 100% 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
-  mask: radial-gradient(circle 8px at 100% 0, transparent 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 8px at 100% 100%, transparent 98%, #000) bottom / 100% 51% no-repeat; }
-.date::after { content: ""; position: absolute; top: 12px; bottom: 12px; right: 0; border-right: 2px dashed rgb(2 42 31 / .35); }
-.event { position: relative; }
-.stamp { position: absolute; z-index: 1; left: 10px; top: 138px; padding: 3px 9px; border: 2.5px solid var(--yellow); border-radius: 5px; color: var(--yellow); font: 900 .8rem var(--font-display); text-transform: uppercase; letter-spacing: .14em; rotate: -12deg; pointer-events: none; }
-@media (max-width: 480px) { .stamp { left: 2px; top: 122px; font-size: .7rem; padding: 2px 7px; } }
-.event:target .stamp { animation: stamp-in .55s cubic-bezier(.2, 1.4, .4, 1) both .15s; }
-@keyframes stamp-in { 0% { opacity: 0; scale: 2.6; rotate: 10deg; } 60% { opacity: 1; scale: .9; } 100% { scale: 1; rotate: -12deg; } }
+/* Eventos como bilhetes: talão colorido, picotado e recortes; carimbo "CONFIRMADO" ao dizer "Vou" */
+.list { border-top: 0; }
+.tabs + .list { padding-top: 18px; }
+.event { position: relative; grid-template-columns: 96px 1fr; gap: 0; padding: 0; margin: 0 0 18px; border: 0; border-radius: 14px; background: var(--card); box-shadow: 0 10px 26px rgb(0 0 0 / .2); }
+/* Meias-luas recortadas onde o bilhete se rasgaria */
+.event::before, .event::after { content: ""; position: absolute; z-index: 2; left: 96px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: var(--bg); }
+.event::before { top: -11px; }
+.event::after { bottom: -11px; }
+.date { position: relative; align-self: stretch; padding: 18px 14px; border-radius: 14px 0 0 14px; }
+/* Picotado: furinhos da cor do fundo ao longo do talão */
+.date::after { content: ""; position: absolute; top: 16px; bottom: 16px; right: -2px; border-right: 4px dotted var(--bg); }
+.event-body { padding: 18px 20px 18px 24px; }
+.event-detail { margin-bottom: 8px; }
+
+.stamp {
+  position: absolute; z-index: 3; right: 22px; top: 50%; translate: 0 -50%;
+  padding: 6px 14px; border: 3px solid var(--coral); border-radius: 6px; outline: 1.5px solid var(--coral); outline-offset: 3px;
+  color: var(--coral); font: 900 1rem var(--font-display); text-transform: uppercase; letter-spacing: .16em;
+  rotate: -14deg; opacity: .88; pointer-events: none;
+}
+/* O carimbo cai sobre o bilhete acabado de confirmar, e o bilhete abana com o impacto */
+article.event:target .stamp { animation: stamp-drop .6s cubic-bezier(.2, .9, .3, 1) both .25s; }
+article.event:target { animation: ticket-thud .4s var(--ease) .6s; border-radius: 14px; }
+@keyframes stamp-drop { 0% { opacity: 0; scale: 3.2; rotate: 8deg; } 55% { opacity: .95; scale: .9; rotate: -17deg; } 78% { scale: 1.05; } 100% { scale: 1; rotate: -14deg; } }
+@keyframes ticket-thud { 0%, 100% { transform: none; } 30% { transform: translateY(4px) scale(.99); } 65% { transform: translateY(-1px); } }
+@media (max-width: 480px) {
+  .event { grid-template-columns: 72px 1fr; }
+  .event::before, .event::after { left: 72px; }
+  .date { padding: 14px 10px; }
+  .event-body { padding: 14px 14px 14px 18px; }
+  .stamp { right: 10px; font-size: .78rem; padding: 4px 10px; }
+}
 
 /* Cartão de membro */
 .profile-card { margin: 28px 0 8px; }
@@ -797,6 +820,19 @@ h1 .seal { width: .6em; height: .6em; vertical-align: .05em; }
 .comment-form { display: flex; gap: 10px; align-items: flex-end; margin-top: 16px; }
 .comment-form .avatar { width: 34px; height: 34px; font-size: .7rem; flex: none; }
 .comment-form textarea { flex: 1; min-height: 44px; resize: none; border-radius: 22px; padding: 11px 16px; }
+
+/* ---------- formatos de foto e fotos nas bocas ---------- */
+.cropper-aspects { display: flex; gap: 6px; margin: 0 0 14px; }
+.cropper-aspects button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: 1px solid var(--line-strong); border-radius: 99px; background: none; color: var(--muted); font: 700 .8rem var(--font-display); cursor: pointer; }
+.cropper-aspects button i { display: inline-block; height: 14px; border: 2px solid currentColor; border-radius: 3px; }
+.cropper-aspects button[aria-checked="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--green-900); }
+.boca-photo { display: block; width: auto; max-width: min(100%, 520px); max-height: 560px; height: auto; border-radius: 14px; border: 1px solid var(--line); margin: 4px 0 10px; background: var(--surface); }
+.boca-photo-link { display: inline-block; }
+.composer-photo { position: relative; display: inline-block; width: fit-content; }
+.composer-photo .boca-photo { max-height: 320px; margin: 0; }
+.composer-photo-del { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgb(0 0 0 / .6); color: #fff; cursor: pointer; }
+.composer-img { margin-right: auto; color: var(--yellow); }
+.composer-img .icon { width: 22px; height: 22px; }
 
 /* ---------- animações ---------- */
 /* Passagem suave entre páginas (Chrome, Edge e Safari recentes; nos outros a página muda normalmente). */

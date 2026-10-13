@@ -5,7 +5,8 @@
       <a href="/u/<%= b.user_id %>"><strong><%= b.name %></strong></a> <%- include('seal') %>
       <span class="muted small"><%= b.school || 'ULO' %> · <%= timeAgo(b.created_at) %></span>
     </div>
-    <% if (locals.big) { %><p class="boca-text"><%= b.body %></p><% } else { %><a class="boca-text" href="/bocas/<%= b.id %>"><%= b.body %></a><% } %>
+    <% if (b.body) { %><% if (locals.big) { %><p class="boca-text"><%= b.body %></p><% } else { %><a class="boca-text" href="/bocas/<%= b.id %>"><%= b.body %></a><% } %><% } %>
+    <% if (b.image_id) { %><a href="/bocas/<%= b.id %>" class="boca-photo-link"><img class="boca-photo" src="/img/<%= b.image_id %>" alt="" loading="lazy" decoding="async"></a><% } %>
     <div class="boca-actions">
       <form method="post" action="/bocas/<%= b.id %>/fogo" class="fogo-form">
         <input type="hidden" name="voltar" value="<%= locals.big ? `/bocas/${b.id}` : `/bocas#b${b.id}` %>">
