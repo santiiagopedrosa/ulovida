@@ -14,6 +14,7 @@
       <% if (followsMe && me.id !== user.id) { %><span class="tag">Segue-te</span><% } %>
     </div>
     <div class="facts">
+      <% const founder = { 1: 'Fundador', 2: 'Co-fundador' }[user.id]; if (founder) { %><div><span class="label">ULOO</span><%= founder %></div><% } %>
       <div><span class="label">Praxe</span><%= PRAXE[user.praxe] || '—' %></div>
       <% if (user.praxe_name && user.praxe !== 'nao') { %><div><span class="label">Nome de praxe</span><%= user.praxe_name %></div><% } %>
       <div><span class="label">Relação</span><%= RELACAO[user.relationship] || '—' %></div>
