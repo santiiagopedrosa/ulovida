@@ -41,16 +41,24 @@
        ['/mensagens', 'Mensagens', 'message', is('/mensagens', '/grupos'), unreadCount, 'não lidas'],
        ['/u/' + me.id, 'Perfil', 'user', is('/u/' + me.id, '/perfil')],
      ];
-     if (me.is_admin) items.push(['/admin', 'Admin', 'shield', is('/admin'), pendingCount, 'pendentes']); %>
+     // Definições (roda dentada): notificações, conta e, para o admin, os pedidos de eventos.
+     items.push(['/definicoes', 'Definições', 'settings', is('/definicoes', '/notificacoes', '/admin'), notifCount + pendingCount, 'novidades', 'settings']); %>
   <nav class="dock <%= /^\/(mensagens|grupos)\/\d+/.test(path) ? 'in-chat' : '' %>" aria-label="Menu principal">
     <% for (const [href, label, icon, active, n, what, kind] of items) { %>
-      <a href="<%= href %>" class="<%= kind || '' %> <%= active ? 'on' : '' %>" <%- active ? 'aria-current="page"' : '' %> data-label="<%= label %>" aria-label="<%= label %><%= n ? `, ${n} ${n === 1 ? what.replace(/s$/, '') : what}` : '' %>">
+      <a href="<%= href %>" class="<%= kind || '' %> <%= active ? 'on' : '' %>" <%- kind === 'settings' ? 'data-settings aria-haspopup="dialog"' : '' %> <%- active ? 'aria-current="page"' : '' %> data-label="<%= label %>" aria-label="<%= label %><%= n ? `, ${n} ${n === 1 ? what.replace(/s$/, '') : what}` : '' %>">
         <% if (active) { %><i class="nav-pill" aria-hidden="true"></i><% } %>
         <span class="dock-icon"><%- include('icon', { name: icon }) %><% if (n) { %><b class="badge" aria-hidden="true"><%= n > 99 ? '99+' : n %></b><% } %></span>
         <% if (active) { %><span class="dock-label" aria-hidden="true"><%= label %></span><% } %>
       </a>
     <% } %>
   </nav>
+  <dialog class="settings-sheet" aria-label="Definições">
+    <div class="sheet-head">
+      <strong><%- include('icon', { name: 'settings' }) %> Definições</strong>
+      <button type="button" class="icon-btn" data-close aria-label="Fechar"><%- include('icon', { name: 'x' }) %></button>
+    </div>
+    <%- include('settings-list') %>
+  </dialog>
 <% } %>
 <main class="wrap">
 <% if (error) { %><div class="alert" role="alert"><%- include('icon', { name: 'alert' }) %><span><%= error %></span></div><% } %>

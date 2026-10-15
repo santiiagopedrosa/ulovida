@@ -1209,6 +1209,9 @@ app.post('/grupos/:id/sair', requireAuth, async (req, res) => {
   res.redirect('/mensagens');
 });
 
+// Definições (sem JavaScript; com JavaScript abre como janela por cima da página).
+app.get('/definicoes', requireAuth, (req, res) => res.render('definicoes', { title: 'Definições' }));
+
 // ---------- notificações ----------
 app.get('/notificacoes', requireAuth, async (req, res) => {
   const rows = await db.all(`SELECT n.*, u.name, u.photo_id FROM (${notificationsSql(req.me.id)}) n

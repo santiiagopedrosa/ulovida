@@ -1,5 +1,7 @@
 <% const role = staffRole(u.id); %>
-<% const tone = role ? 'var(--yellow)' : { ESTG: 'var(--lime)', ESECS: 'var(--mint)', ESSLei: 'var(--pink)', 'ESAD.CR': 'var(--coral)', ESTM: 'var(--yellow)' }[u.school] || 'var(--yellow)'; %>
+<%# Cada aluno tem a sua cor (fixa, a partir do número do cartão). 7 e 10 não têm divisores comuns, por isso números seguidos nunca repetem a cor. %>
+<% const palette = ['#f7eb7d', '#c9dd9d', '#acd9d6', '#f1dadb', '#eb665b', '#c3b8f2', '#9fd2f2', '#f6b27a', '#7be3b1', '#e9a8d8'];
+   const tone = role ? 'var(--yellow)' : palette[(Number(u.id) * 7) % palette.length]; %>
 <div class="member-card <%= role ? 'founder' : '' %> <%= locals.reveal ? 'reveal-card' : '' %>" style="--tone: <%= tone %>" data-tilt>
   <i class="mc-corner" aria-hidden="true"></i><i class="mc-dot" aria-hidden="true"></i>
   <div class="mc-top"><span class="mc-brand">ULOO<i></i></span><span class="mc-kind">Cartão de estudante</span></div>

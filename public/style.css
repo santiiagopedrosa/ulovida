@@ -1131,3 +1131,26 @@ body {
   background: linear-gradient(100deg, var(--yellow), var(--mint) 55%, var(--pink));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+
+/* ---------- definições (roda dentada no menu flutuante) ---------- */
+.dock a.settings.spin .dock-icon .icon { animation: gear-spin .5s var(--ease); }
+@keyframes gear-spin { from { rotate: -120deg; } }
+.settings-sheet { width: min(460px, 100vw); max-width: 100vw; max-height: 85dvh; margin: auto auto 0; padding: 0 16px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 22px 22px 0 0; background: var(--card); color: var(--ink); overflow-y: auto; }
+.settings-sheet[open] { animation: sheet-up .2s var(--ease); }
+.settings-sheet::backdrop { background: rgb(0 0 0 / .5); }
+.settings-sheet .sheet-head strong { display: inline-flex; align-items: center; gap: 8px; }
+.settings-sheet .sheet-head .icon { width: 20px; height: 20px; color: var(--yellow); }
+@media (min-width: 1024px) { .settings-sheet { margin: auto auto auto 110px; border-radius: 22px; } }
+.settings-list { display: grid; }
+.settings-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 2px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.settings-row:hover .settings-icon { background: var(--yellow); color: var(--green-900); }
+.settings-row > .icon { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.settings-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--surface); color: var(--yellow); flex: none; transition: background .15s var(--ease), color .15s var(--ease); }
+.settings-icon .icon { width: 19px; height: 19px; }
+.settings-text { flex: 1; min-width: 0; display: grid; line-height: 1.3; }
+.settings-text .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-badge { background: var(--coral); color: #fff; animation: none; }
+.settings-row-form { margin: 0; }
+.danger-row { border-bottom: 0; }
+.danger-row strong { color: var(--danger); }
+.danger-row .settings-icon { color: var(--danger); }

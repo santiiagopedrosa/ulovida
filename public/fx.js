@@ -161,4 +161,17 @@ if (standalone && !document.body.classList.contains('story-page')) {
   // Ao voltar atrás para esta página, o indicador não fica preso.
   addEventListener('pageshow', () => { busy = false; ptr.classList.remove('loading'); set(0); });
 }
+
+// Roda dentada do menu: abre as definições numa janela por cima da página (a roda gira ao abrir).
+const settings = document.querySelector('.settings-sheet');
+const gear = document.querySelector('.dock a[data-settings]');
+if (settings && gear) {
+  gear.addEventListener('click', (e) => {
+    e.preventDefault();
+    gear.classList.remove('spin'); void gear.offsetWidth; gear.classList.add('spin');
+    settings.showModal();
+  });
+  settings.querySelector('[data-close]').addEventListener('click', () => settings.close());
+  settings.addEventListener('click', (e) => { if (e.target === settings) settings.close(); });
+}
 }
