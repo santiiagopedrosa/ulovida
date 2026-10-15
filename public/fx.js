@@ -112,4 +112,53 @@ document.getElementById('have-code')?.addEventListener('click', (e) => {
   if (!input.checkValidity() || !input.value) { input.reportValidity(); input.focus(); return; }
   location.href = `/confirmar?email=${encodeURIComponent(input.value.trim())}`;
 });
+
+// Puxar para baixo para atualizar, quando o ULOO está aberto como app (ecrã principal do iPhone/Android).
+// No Safari normal o próprio browser já faz isto, por isso só se ativa no modo app.
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+if (standalone && !document.body.classList.contains('story-page')) {
+  const MAX = 110, READY = 70;
+  const ptr = document.createElement('div');
+  ptr.className = 'ptr';
+  ptr.setAttribute('aria-hidden', 'true');
+  ptr.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>';
+  document.body.append(ptr);
+  let startY = null, dist = 0, busy = false;
+  const set = (d) => {
+    dist = d;
+    ptr.style.setProperty('--pull', `${d}px`);
+    ptr.style.setProperty('--turn', `${d * 3}deg`);
+    ptr.style.opacity = Math.min(1, d / 40);
+    ptr.classList.toggle('ready', d >= READY);
+  };
+  // Não começa dentro de janelas, conversas, caixas de texto ou zonas de arrastar.
+  const blocked = (el) => el.closest('dialog, .chat-log, input, textarea, select, .cropper-stage, .trim-bar, [data-no-ptr]');
+  addEventListener('touchstart', (e) => {
+    if (busy || scrollY > 0 || e.touches.length !== 1 || blocked(e.target)) { startY = null; return; }
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0 || scrollY > 0) { if (dist) set(0); return; }
+    e.preventDefault();
+    ptr.classList.add('pulling');
+    set(Math.min(MAX, dy * 0.5));
+  }, { passive: false });
+  const end = () => {
+    if (startY === null) return;
+    startY = null;
+    ptr.classList.remove('pulling');
+    if (dist >= READY) {
+      busy = true;
+      ptr.classList.add('loading');
+      set(READY);
+      location.reload();
+    } else set(0);
+  };
+  addEventListener('touchend', end);
+  addEventListener('touchcancel', end);
+  // Ao voltar atrás para esta página, o indicador não fica preso.
+  addEventListener('pageshow', () => { busy = false; ptr.classList.remove('loading'); set(0); });
+}
 }
