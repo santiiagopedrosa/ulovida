@@ -9,6 +9,14 @@ import { sendVerificationCode } from './mail.js';
 import { SCHOOLS, COURSES } from './courses.js';
 
 const app = express();
+// A biblioteca do Face ID usa funções do Web Crypto que o Node marca como "experimentais": o aviso não é um erro,
+// mas aparecia a vermelho nos logs da Vercel. Os outros avisos continuam a aparecer.
+const emitWarning = process.emitWarning;
+process.emitWarning = (warning, ...rest) => {
+  const type = typeof rest[0] === 'string' ? rest[0] : rest[0]?.type ?? warning?.name;
+  if (type === 'ExperimentalWarning' && /Web Crypto/.test(String(warning?.message ?? warning))) return;
+  return emitWarning.call(process, warning, ...rest);
+};
 const PORT = Number(process.env.PORT || 3000);
 // Na Vercel, sem APP_URL definido, usa o endereço de produção que a própria Vercel fornece.
 const VERCEL_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
