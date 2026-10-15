@@ -1070,11 +1070,14 @@ button.chat-user .muted { overflow: hidden; text-overflow: ellipsis; white-space
 .avatar-link { display: inline-block; border-radius: 50%; }
 
 /* ---------- padrões (TESTE) — para tirar, apaga este bloco ---------- */
+:root { --pattern: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='280'%20height='280'%20viewBox='0%200%20280%20280'%20fill='none'%20stroke-width='9'%3E%3Cg%20opacity='.09'%3E%20%3Cpath%20d='M28%2028v22a14%2014%200%200%200%2028%200V28'%20stroke='%23c9dd9d'/%3E%20%3Cpath%20d='M146%2024v36h28'%20stroke='%23acd9d6'/%3E%20%3Ccircle%20cx='234'%20cy='50'%20r='13'%20stroke='%23f1dadb'/%3E%20%3Ccircle%20cx='104'%20cy='112'%20r='8'%20fill='%23f7eb7d'%20stroke='none'/%3E%20%3Ccircle%20cx='52'%20cy='176'%20r='13'%20stroke='%23eb665b'/%3E%20%3Cpath%20d='M154%20178v-20a14%2014%200%200%201%2028%200v20'%20stroke='%23f7eb7d'/%3E%20%3Cpath%20d='M232%20150h30v34'%20stroke='%23c9dd9d'/%3E%20%3Ccircle%20cx='118'%20cy='240'%20r='6'%20fill='%23acd9d6'%20stroke='none'/%3E%20%3Cpath%20d='M24%20250h26'%20stroke='%23f1dadb'/%3E%20%3Ccircle%20cx='214'%20cy='246'%20r='8'%20fill='%23eb665b'%20stroke='none'/%3E%20%3C/g%3E%3C/svg%3E"); }
+:root[data-theme="claro"] { --pattern: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='280'%20height='280'%20viewBox='0%200%20280%20280'%20fill='none'%20stroke-width='9'%3E%3Cg%20opacity='.06'%3E%20%3Cpath%20d='M28%2028v22a14%2014%200%200%200%2028%200V28'%20stroke='%23022a1f'/%3E%20%3Cpath%20d='M146%2024v36h28'%20stroke='%23022a1f'/%3E%20%3Ccircle%20cx='234'%20cy='50'%20r='13'%20stroke='%23022a1f'/%3E%20%3Ccircle%20cx='104'%20cy='112'%20r='8'%20fill='%23022a1f'%20stroke='none'/%3E%20%3Ccircle%20cx='52'%20cy='176'%20r='13'%20stroke='%23022a1f'/%3E%20%3Cpath%20d='M154%20178v-20a14%2014%200%200%201%2028%200v20'%20stroke='%23022a1f'/%3E%20%3Cpath%20d='M232%20150h30v34'%20stroke='%23022a1f'/%3E%20%3Ccircle%20cx='118'%20cy='240'%20r='6'%20fill='%23022a1f'%20stroke='none'/%3E%20%3Cpath%20d='M24%20250h26'%20stroke='%23022a1f'/%3E%20%3Ccircle%20cx='214'%20cy='246'%20r='8'%20fill='%23022a1f'%20stroke='none'/%3E%20%3C/g%3E%3C/svg%3E"); }
 /* Fundo com formas soltas nas cores da página inicial, muito suaves para não tirar leitura. */
 body {
   background-color: var(--bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260' fill='none' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg opacity='.09'%3E%3Ccircle cx='34' cy='38' r='9' fill='%23f7eb7d' stroke='none'/%3E%3Cpath d='M150 30c10-12 20 12 30 0s20 12 30 0' stroke='%23c9dd9d'/%3E%3Cpath d='M92 112v26M79 125h26' stroke='%23acd9d6'/%3E%3Cpath d='M200 120a22 22 0 0 1 44 0' stroke='%23f1dadb'/%3E%3Cpath d='M40 200l14-24 14 24z' stroke='%23eb665b'/%3E%3Ccircle cx='170' cy='210' r='14' stroke='%23f7eb7d'/%3E%3Ccircle cx='238' cy='232' r='5' fill='%23acd9d6' stroke='none'/%3E%3Cpath d='M120 228c8-10 16 10 24 0' stroke='%23eb665b'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 260px 260px;
+  /* Formas das letras do logótipo (U, L, O) e o ponto amarelo, nas cores da ULO. */
+  background-image: var(--pattern);
+  background-size: 280px 280px;
 }
 /* Faixa de cores por baixo do menu de cima e por cima do rodapé. */
 .top, .foot { position: relative; }

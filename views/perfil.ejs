@@ -26,11 +26,6 @@
     </div>
     <% if (user.bio) { %><p class="bio"><%= user.bio %></p><% } %>
     <div class="row">
-      <% if (me.id === user.id) { %>
-        <a class="btn ghost small" href="/perfil/editar">Editar perfil</a>
-        <a class="btn ghost small" href="/stories/nova"><%- include('partials/icon', { name: 'plus' }) %> Momento</a>
-        <form method="post" action="/sair"><button class="btn ghost small"><%- include('partials/icon', { name: 'logout' }) %> Sair</button></form>
-      <% } else { %>
         <form method="post" action="/u/<%= user.id %>/seguir">
           <% if (iFollow) { %>
             <button class="btn ghost small"><%- include('partials/icon', { name: 'check' }) %> A seguir</button>
