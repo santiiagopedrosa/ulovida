@@ -343,6 +343,8 @@ img.avatar { object-fit: cover; background: var(--surface); }
 .profile-main { flex: 1; min-width: 240px; }
 .profile-main h1 { margin-bottom: 2px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 22px 0; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+/* No telemóvel as informações ficam lado a lado, encostadas à esquerda (sem coluna a meio do ecrã). */
+@media (max-width: 640px) { .facts { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 14px 32px; } .facts > div { min-width: 0; } }
 .facts .label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 2px; }
 .bio { white-space: pre-line; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
@@ -1024,3 +1026,6 @@ button.chat-user .muted { overflow: hidden; text-overflow: ellipsis; white-space
 .group-add summary::-webkit-details-marker { display: none; }
 .group-add[open] summary { margin-bottom: 10px; }
 .group-leave { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.notif-day { margin: 22px 0 2px; font: 800 .75rem var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.notif-list > .notif-day:first-child { margin-top: 4px; }
+.notif-list { border-top: 0; }

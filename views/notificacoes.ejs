@@ -27,13 +27,14 @@
    };
    const icon = { follow: 'user', boca_like: 'flame', story_like: 'flame', comment_post: 'message', comment_event: 'message', event_convivio: 'ticket', event_pre: 'ticket', group: 'users' }; %>
 <div class="list notif-list">
-  <% for (const n of items) { if (!text[n.kind]) continue; %>
+  <% let lastDay = null; for (const n of items) { if (!text[n.kind]) continue; %>
+    <% if (n.day !== lastDay) { lastDay = n.day; %><h2 class="notif-day"><%= n.day %></h2><% } %>
     <a class="notif <%= n.unseen ? 'unseen' : '' %>" href="<%= href[n.kind](n) %>">
       <span class="notif-av"><%- include('partials/avatar', { u: { id: n.actor_id, name: n.name, photo_id: n.photo_id } }) %><i class="notif-kind k-<%= n.kind.split("_")[0] %>"><%- include('partials/icon', { name: icon[n.kind] }) %></i></span>
-      <span class="notif-text"><strong><%= first(n) %></strong> <%= text[n.kind](n) %> <span class="muted small"><%= timeAgo(n.at) %></span></span>
+      <span class="notif-text"><strong><%= first(n) %></strong> <%= text[n.kind](n) %> <time class="muted small"><%= fmtTime(n.at) %></time></span>
       <% if (n.unseen) { %><b class="notif-dot" aria-label="Nova"></b><% } %>
     </a>
   <% } %>
-  <% if (!items.length) { %><p class="empty">Ainda não há notificações. Quando alguém te seguir, der 🔥 ou criar um evento, aparece aqui.</p><% } %>
+  <% if (!items.length) { %><p class="empty">Não tens notificações dos últimos 5 dias. Quando alguém te seguir, der 🔥 ou criar um evento, aparece aqui.</p><% } %>
 </div>
 <%- include('partials/footer') %>

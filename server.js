@@ -76,8 +76,17 @@ function visibleTo(meId) {
     OR (e.visibility = 'selected' AND EXISTS (SELECT 1 FROM event_invites i WHERE i.event_id = e.id AND i.user_id = ${me})))`;
 }
 // Notificações calculadas a partir do que já existe na BD: novos seguidores, 🔥 nas bocas e momentos,
-// comentários, eventos de quem eu sigo e grupos onde me puseram. Só contam os últimos 30 dias.
-const NOTIF_DAYS_MS = 30 * 24 * 3_600_000;
+// comentários, eventos de quem eu sigo e grupos onde me puseram. Ao fim de 5 dias desaparecem.
+const NOTIF_DAYS_MS = 5 * 24 * 3_600_000;
+// Dia de uma notificação (hora de Lisboa): "Hoje", "Ontem" ou "segunda, 13 out".
+const dayKey = (ms) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(ms);
+const dayPart = (ms, o) => new Intl.DateTimeFormat('pt-PT', { ...o, timeZone: 'Europe/Lisbon' }).format(ms).replace('.', '');
+function dayLabel(ms) {
+  const key = dayKey(ms);
+  if (key === dayKey(Date.now())) return 'Hoje';
+  if (key === dayKey(Date.now() - 86_400_000)) return 'Ontem';
+  return `${dayPart(ms, { weekday: 'long' }).replace('-feira', '')}, ${dayPart(ms, { day: 'numeric' })} ${dayPart(ms, { month: 'short' })}`;
+}
 function notificationsSql(meId) {
   const me = Number(meId);
   return `SELECT * FROM (
@@ -1046,7 +1055,7 @@ app.get('/notificacoes', requireAuth, async (req, res) => {
   const seen = req.me.notif_seen_at || 0;
   await db.run('UPDATE users SET notif_seen_at = ? WHERE id = ?', Date.now(), req.me.id);
   res.locals.notifCount = 0;
-  res.render('notificacoes', { title: 'Notificações', items: rows.map((n) => ({ ...n, unseen: n.at > seen })) });
+  res.render('notificacoes', { title: 'Notificações', items: rows.map((n) => ({ ...n, unseen: n.at > seen, day: dayLabel(n.at) })) });
 });
 
 // ---------- admin ----------
