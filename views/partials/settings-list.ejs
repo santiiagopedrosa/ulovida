@@ -1,6 +1,5 @@
 <%# Lista das definições: usada na janela da roda dentada e na página /definicoes (sem JavaScript). %>
 <% const rows = [
-     ['/notificacoes', 'bell', 'Notificações', notifCount ? `${notifCount} ${notifCount === 1 ? 'nova' : 'novas'}` : 'Seguidores, 🔥, comentários e eventos', notifCount],
      ['/perfil/editar', 'pencil', 'Editar perfil', 'Foto, curso, praxe e bio', 0],
      ['/perfil/editar#biometria', 'fingerprint', 'Face ID / impressão digital', 'Entrar sem escrever a password', 0],
      ['/recuperar?email=' + encodeURIComponent(me.email), 'key', 'Mudar password', 'Enviamos um código para o teu email', 0],

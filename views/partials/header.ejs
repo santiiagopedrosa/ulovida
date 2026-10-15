@@ -24,11 +24,6 @@
 <header class="top">
   <div class="wrap top-inner">
     <a class="brand" href="/"><i class="brand-mark" aria-hidden="true"></i><span class="brand-name">ULO<b>O</b></span></a>
-    <% if (me) { %>
-      <a class="bell <%= path === '/notificacoes' ? 'on' : '' %>" href="/notificacoes" aria-label="Notificações<%= notifCount ? `, ${notifCount} ${notifCount === 1 ? 'nova' : 'novas'}` : '' %>">
-        <%- include('icon', { name: 'bell' }) %><% if (notifCount) { %><b class="badge" aria-hidden="true"><%= notifCount > 99 ? '99+' : notifCount %></b><% } %>
-      </a>
-    <% } %>
     <% if (!me && path !== '/entrar') { %><a class="btn ghost small" href="/entrar">Entrar</a><% } %>
   </div>
 </header>
@@ -39,10 +34,11 @@
        ['/pessoas', 'Pessoas', 'users', is('/pessoas')],
        ['/stories/nova', 'Novo momento', 'plus', false, 0, '', 'create'],
        ['/mensagens', 'Mensagens', 'message', is('/mensagens', '/grupos'), unreadCount, 'não lidas'],
+       ['/notificacoes', 'Notificações', 'bell', is('/notificacoes'), notifCount, 'novas'],
        ['/u/' + me.id, 'Perfil', 'user', is('/u/' + me.id, '/perfil')],
      ];
      // Definições (roda dentada): notificações, conta e, para o admin, os pedidos de eventos.
-     items.push(['/definicoes', 'Definições', 'settings', is('/definicoes', '/notificacoes', '/admin'), notifCount + pendingCount, 'novidades', 'settings']); %>
+     items.push(['/definicoes', 'Definições', 'settings', is('/definicoes', '/admin'), pendingCount, 'pendentes', 'settings']); %>
   <nav class="dock <%= /^\/(mensagens|grupos)\/\d+/.test(path) ? 'in-chat' : '' %>" aria-label="Menu principal">
     <% for (const [href, label, icon, active, n, what, kind] of items) { %>
       <a href="<%= href %>" class="<%= kind || '' %> <%= active ? 'on' : '' %>" <%- kind === 'settings' ? 'data-settings aria-haspopup="dialog"' : '' %> <%- active ? 'aria-current="page"' : '' %> data-label="<%= label %>" aria-label="<%= label %><%= n ? `, ${n} ${n === 1 ? what.replace(/s$/, '') : what}` : '' %>">
