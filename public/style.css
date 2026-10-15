@@ -343,6 +343,13 @@ img.avatar { object-fit: cover; background: var(--surface); }
 .profile-main { flex: 1; min-width: 240px; }
 .profile-main h1 { margin-bottom: 2px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 22px 0; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+/* No telemóvel a foto de perfil fica à direita, ao lado do nome. */
+@media (max-width: 640px) {
+  .profile { position: relative; }
+  .profile > :first-child { position: absolute; top: 0; right: 0; }
+  .profile > .avatar.big, .profile > .story-ring.big .avatar { width: 76px; height: 76px; font-size: 1.5rem; }
+  .profile-main > h1, .profile-main > h1 + .muted { padding-right: 96px; }
+}
 /* No telemóvel as informações ficam lado a lado, encostadas à esquerda (sem coluna a meio do ecrã). */
 @media (max-width: 640px) { .facts { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 14px 32px; } .facts > div { min-width: 0; } }
 .facts .label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 2px; }
