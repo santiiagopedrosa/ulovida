@@ -12,6 +12,16 @@
     <a class="forgot small" href="/recuperar" id="forgot">Esqueci-me da password</a>
     <button class="btn block">Entrar</button>
   </form>
+  <%# Só aparece se o telemóvel/computador tiver Face ID, impressão digital, etc. %>
+  <div class="bio-login" data-bio hidden>
+    <span class="or"><span>ou</span></span>
+    <button type="button" class="btn ghost block" data-bio-login>
+      <%- include('partials/icon', { name: 'fingerprint' }) %> Entrar com <span data-bio-label>Face ID</span>
+    </button>
+    <p class="hint bio-error" data-bio-error hidden></p>
+  </div>
   <p class="muted small">Ainda não tens conta? <a href="/registar">Regista-te</a>.</p>
 </section>
+<script src="/vendor/simplewebauthn-browser.min.js" defer></script>
+<script src="/biometria.js" defer></script>
 <%- include('partials/footer') %>

@@ -55,6 +55,28 @@
     <label>Bio <span class="hint">Até 500 caracteres</span><textarea name="bio" rows="4" maxlength="500"><%= form.bio %></textarea></label>
     <button class="btn block">Guardar</button>
   </form>
+
+  <section class="bio-settings" id="biometria">
+    <h2>Entrar com <span data-bio-label>Face ID</span></h2>
+    <p class="muted small">Entra no ULOO sem escrever a password. A tua cara ou impressão digital nunca sai do telemóvel — o ULOO só recebe uma chave de confirmação.</p>
+    <% for (const k of passkeys) { %>
+      <div class="bio-device">
+        <%- include('partials/icon', { name: 'fingerprint' }) %>
+        <span class="grow"><strong><%= k.device %></strong><span class="muted small">Ativado a <%= fmtDate(new Date(k.created_at).toISOString()) %><%= k.last_used_at ? ` · usado ${timeAgo(k.last_used_at)}` : '' %></span></span>
+        <form method="post" action="/biometria/apagar" onsubmit="return confirm('Desativar neste aparelho?')">
+          <input type="hidden" name="id" value="<%= k.id %>">
+          <button class="btn ghost small danger">Desativar</button>
+        </form>
+      </div>
+    <% } %>
+    <div data-bio hidden>
+      <button type="button" class="btn small" data-bio-register><%- include('partials/icon', { name: 'fingerprint' }) %> Ativar neste aparelho</button>
+      <p class="hint bio-error" data-bio-error hidden></p>
+    </div>
+    <p class="hint" data-bio-unsupported hidden>Este aparelho ou browser não tem Face ID nem impressão digital disponível.</p>
+  </section>
 </section>
 <script src="/upload.js" defer></script>
+<script src="/vendor/simplewebauthn-browser.min.js" defer></script>
+<script src="/biometria.js" defer></script>
 <%- include('partials/footer') %>

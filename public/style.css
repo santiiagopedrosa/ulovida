@@ -1088,3 +1088,25 @@ body {
 }
 .top::after { bottom: 0; }
 .foot::before { top: 0; }
+
+/* ---------- Face ID / impressão digital ---------- */
+.bio-login { display: grid; gap: 12px; margin: -8px 0 24px; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .8rem; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.bio-error { margin: 0; color: var(--danger); }
+.bio-offer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 16px; margin-bottom: 20px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--card); animation: drop .2s var(--ease) both; }
+.bio-offer[hidden] { display: none; }
+.bio-offer-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); color: var(--green-900); font-weight: 900; flex: none; }
+.bio-offer-icon .icon { width: 22px; height: 22px; }
+.bio-offer-text { flex: 1; min-width: 160px; display: grid; line-height: 1.35; }
+.bio-offer .bio-error { flex-basis: 100%; }
+.bio-settings { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); }
+.bio-settings h2 { font-size: 1.2rem; }
+.bio-device { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.bio-device > .icon { width: 22px; height: 22px; color: var(--yellow); flex: none; }
+.bio-device .grow { flex: 1; display: grid; line-height: 1.35; }
+.bio-device form { margin: 0; }
+.bio-settings [data-bio] { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+.bio-settings [data-bio][hidden] { display: none; }
+.bio-offer { position: relative; padding-right: 44px; }
+.bio-offer [data-bio-dismiss] { position: absolute; top: 4px; right: 4px; }

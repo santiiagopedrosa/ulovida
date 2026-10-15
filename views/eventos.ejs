@@ -1,4 +1,16 @@
 <%- include('partials/header') %>
+<% if (offerBiometric) { %>
+  <%# Convite para ativar o Face ID / impressão digital (o script só o mostra se o aparelho tiver). %>
+  <div class="bio-offer" data-bio data-bio-offer hidden>
+    <span class="bio-offer-icon"><%- include('partials/icon', { name: 'fingerprint' }) %></span>
+    <span class="bio-offer-text"><strong>Entra mais depressa</strong><span class="muted small">Ativa o <span data-bio-label>Face ID</span> para não teres de escrever a password.</span></span>
+    <button type="button" class="btn small" data-bio-register>Ativar</button>
+    <button type="button" class="icon-btn" data-bio-dismiss aria-label="Agora não"><%- include('partials/icon', { name: 'x' }) %></button>
+    <p class="hint bio-error" data-bio-error hidden></p>
+  </div>
+  <script src="/vendor/simplewebauthn-browser.min.js" defer></script>
+  <script src="/biometria.js" defer></script>
+<% } %>
 <div class="pagehead">
   <div>
     <h1>Eventos</h1>

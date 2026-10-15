@@ -181,6 +181,26 @@ await client.executeMultiple(`
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS group_messages_group ON group_messages (group_id, id);
+
+  -- Face ID / impressão digital (passkeys): só se guarda a chave pública; a biometria nunca sai do telemóvel.
+  CREATE TABLE IF NOT EXISTS passkeys (
+    id           TEXT PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    public_key   BLOB NOT NULL,
+    counter      INTEGER NOT NULL DEFAULT 0,
+    transports   TEXT NOT NULL DEFAULT '',
+    device       TEXT NOT NULL DEFAULT '',
+    created_at   INTEGER NOT NULL,
+    last_used_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS passkeys_user ON passkeys (user_id);
+  -- Desafios de uso único (5 min) para registar ou usar uma passkey.
+  CREATE TABLE IF NOT EXISTS webauthn_challenges (
+    token_hash TEXT PRIMARY KEY,
+    challenge  TEXT NOT NULL,
+    user_id    INTEGER,
+    expires_at INTEGER NOT NULL
+  );
 `);
 
 // Colunas acrescentadas depois da primeira versão: adiciona-as se a BD ainda não as tiver.

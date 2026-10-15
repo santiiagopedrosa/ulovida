@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import multer from 'multer';
 import sharp from 'sharp';
+import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { db } from './db.js';
 import { sendVerificationCode } from './mail.js';
 import { SCHOOLS, COURSES } from './courses.js';
@@ -170,6 +171,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(import.meta.dirname, 'views'));
 app.use(express.static(path.join(import.meta.dirname, 'public')));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
+app.use(express.json({ limit: '64kb' }));
 // No Express 5, um POST sem corpo deixa req.body indefinido; assim as rotas podem ler campos sem rebentar.
 app.use((req, res, next) => { req.body ??= {}; next(); });
 
@@ -191,6 +193,7 @@ app.use(async (req, res, next) => {
     lastCleanup = Date.now();
     await db.run('DELETE FROM sessions WHERE expires_at < ?', Date.now());
     await db.run('DELETE FROM email_tokens WHERE expires_at < ?', Date.now());
+    await db.run('DELETE FROM webauthn_challenges WHERE expires_at < ?', Date.now());
     const old = await db.all('SELECT id, image_id, poster_id FROM stories WHERE expires_at < ?', Date.now());
     for (const st of old) {
       await db.run('DELETE FROM story_views WHERE story_id = ?', st.id);
@@ -388,6 +391,99 @@ app.post('/entrar', async (req, res) => {
   res.redirect('/eventos');
 });
 
+// ---------- Face ID / impressão digital (passkeys / WebAuthn) ----------
+// Só funciona no endereço oficial do site (APP_URL): a passkey fica presa a esse domínio.
+const RP_ID = new URL(APP_URL).hostname;
+const RP_ORIGIN = new URL(APP_URL).origin;
+const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const passkeysOf = (userId) => db.all('SELECT id, device, created_at, last_used_at FROM passkeys WHERE user_id = ? ORDER BY created_at DESC', userId);
+const deviceName = (req) => {
+  const ua = req.get('user-agent') || '';
+  return /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+    : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Este aparelho';
+};
+// O desafio fica na BD (a Vercel não guarda memória entre pedidos) e o browser só tem a chave dele num cookie.
+async function saveChallenge(res, challenge, userId = null) {
+  const token = newToken();
+  await db.run('INSERT INTO webauthn_challenges (token_hash, challenge, user_id, expires_at) VALUES (?, ?, ?, ?)',
+    sha(token), challenge, userId, Date.now() + CHALLENGE_TTL_MS);
+  res.cookie('wa', token, { httpOnly: true, sameSite: 'strict', secure: APP_URL.startsWith('https'), maxAge: CHALLENGE_TTL_MS });
+}
+async function takeChallenge(req, res) {
+  const token = getCookie(req, 'wa');
+  res.clearCookie('wa');
+  if (!token) return null;
+  const row = await db.get('SELECT * FROM webauthn_challenges WHERE token_hash = ? AND expires_at > ?', sha(token), Date.now());
+  await db.run('DELETE FROM webauthn_challenges WHERE token_hash = ?', sha(token));
+  return row;
+}
+
+// Ativar: o telemóvel cria uma chave nova, protegida pelo Face ID / impressão digital.
+app.get('/biometria/registo/opcoes', requireAuth, async (req, res) => {
+  const existing = await db.all('SELECT id, transports FROM passkeys WHERE user_id = ?', req.me.id);
+  const options = await generateRegistrationOptions({
+    rpName: 'ULOO', rpID: RP_ID,
+    userName: req.me.email, userDisplayName: req.me.name, userID: new TextEncoder().encode(String(req.me.id)),
+    attestationType: 'none',
+    excludeCredentials: existing.map((c) => ({ id: c.id, transports: c.transports ? c.transports.split(',') : undefined })),
+    authenticatorSelection: { residentKey: 'required', userVerification: 'required', authenticatorAttachment: 'platform' },
+  });
+  await saveChallenge(res, options.challenge, req.me.id);
+  res.json(options);
+});
+
+app.post('/biometria/registo', requireAuth, async (req, res) => {
+  const ch = await takeChallenge(req, res);
+  if (!ch || ch.user_id !== req.me.id) return res.status(400).json({ error: 'O pedido expirou. Tenta outra vez.' });
+  let result;
+  try {
+    result = await verifyRegistrationResponse({ response: req.body, expectedChallenge: ch.challenge, expectedOrigin: RP_ORIGIN, expectedRPID: RP_ID, requireUserVerification: true });
+  } catch (err) {
+    console.error('Passkey (registo):', err.message);
+    return res.status(400).json({ error: 'Não foi possível ativar. Tenta outra vez.' });
+  }
+  if (!result.verified) return res.status(400).json({ error: 'Não foi possível ativar. Tenta outra vez.' });
+  const { credential } = result.registrationInfo;
+  if (await db.get('SELECT 1 FROM passkeys WHERE id = ?', credential.id)) return res.status(400).json({ error: 'Este aparelho já está ativado.' });
+  await db.run('INSERT INTO passkeys (id, user_id, public_key, counter, transports, device, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    credential.id, req.me.id, Buffer.from(credential.publicKey), credential.counter, (credential.transports || []).join(','), deviceName(req), Date.now());
+  res.json({ ok: true });
+});
+
+// Entrar: o telemóvel mostra as contas que tem guardadas para o ULOO e assina o desafio depois do Face ID.
+app.get('/biometria/entrar/opcoes', async (req, res) => {
+  const options = await generateAuthenticationOptions({ rpID: RP_ID, userVerification: 'required' });
+  await saveChallenge(res, options.challenge);
+  res.json(options);
+});
+
+app.post('/biometria/entrar', async (req, res) => {
+  const fail = (error) => res.status(400).json({ error });
+  const ch = await takeChallenge(req, res);
+  if (!ch) return fail('O pedido expirou. Tenta outra vez.');
+  const pk = await db.get('SELECT * FROM passkeys WHERE id = ?', str(req.body.id, 1024));
+  if (!pk) return fail('Este aparelho já não está associado a nenhuma conta. Entra com a password e ativa outra vez no teu perfil.');
+  let result;
+  try {
+    result = await verifyAuthenticationResponse({
+      response: req.body, expectedChallenge: ch.challenge, expectedOrigin: RP_ORIGIN, expectedRPID: RP_ID, requireUserVerification: true,
+      credential: { id: pk.id, publicKey: new Uint8Array(pk.public_key), counter: pk.counter, transports: pk.transports ? pk.transports.split(',') : undefined },
+    });
+  } catch (err) {
+    console.error('Passkey (entrar):', err.message);
+    return fail('Não foi possível confirmar. Tenta outra vez ou entra com a password.');
+  }
+  if (!result.verified) return fail('Não foi possível confirmar. Tenta outra vez ou entra com a password.');
+  await db.run('UPDATE passkeys SET counter = ?, last_used_at = ? WHERE id = ?', result.authenticationInfo.newCounter, Date.now(), pk.id);
+  await startSession(res, pk.user_id);
+  res.json({ redirect: '/eventos' });
+});
+
+app.post('/biometria/apagar', requireAuth, async (req, res) => {
+  await db.run('DELETE FROM passkeys WHERE id = ? AND user_id = ?', str(req.body.id, 1024), req.me.id);
+  res.redirect('/perfil/editar#biometria');
+});
+
 // ---------- esqueci-me da password ----------
 app.get('/recuperar', (req, res) => res.render('recuperar', { title: 'Recuperar password', email: str(req.query.email, 120) }));
 
@@ -488,8 +584,8 @@ app.get('/u/:id', requireAuth, async (req, res) => {
   });
 });
 
-app.get('/perfil/editar', requireAuth, (req, res) => {
-  res.render('editar-perfil', { title: 'Editar perfil', form: req.me, novo: req.query.novo === '1' });
+app.get('/perfil/editar', requireAuth, async (req, res) => {
+  res.render('editar-perfil', { title: 'Editar perfil', form: req.me, novo: req.query.novo === '1', passkeys: await passkeysOf(req.me.id) });
 });
 
 app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
@@ -505,7 +601,7 @@ app.post('/perfil/editar', requireAuth, photoUpload, async (req, res) => {
     instagram: str(req.body.instagram, 31).replace(/^@/, ''),
     photo_id: req.me.photo_id,
   };
-  const fail = (error) => res.status(400).render('editar-perfil', { title: 'Editar perfil', form, novo: false, error });
+  const fail = async (error) => res.status(400).render('editar-perfil', { title: 'Editar perfil', form, novo: false, passkeys: await passkeysOf(req.me.id), error });
   if (form.name.length < 2) return fail('Escreve o teu nome.');
   if (!SCHOOLS[form.school]) return fail('Escolhe a tua escola.');
   if (!validCourse(form.school, form.course)) return fail('Escolhe o teu curso da lista.');
@@ -560,7 +656,8 @@ app.get('/eventos', requireAuth, async (req, res) => {
     WHERE u.id != ${me} AND u.id NOT IN (SELECT followee_id FROM follows WHERE follower_id = ${me})
     ORDER BY (u.course = ? AND u.course != '') DESC, (u.school = ? AND u.school != '') DESC, followers DESC, u.id DESC
     LIMIT 5`, req.me.course || '', req.me.school || '');
-  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, suggestions, created: req.query.criado === '1', passwordChanged: req.query.password === '1' });
+  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, suggestions, created: req.query.criado === '1', passwordChanged: req.query.password === '1',
+    offerBiometric: !(await db.get('SELECT 1 FROM passkeys WHERE user_id = ?', req.me.id)) });
 });
 
 // Pessoas que podem ser convidadas para um evento privado: quem eu sigo e quem me segue.
