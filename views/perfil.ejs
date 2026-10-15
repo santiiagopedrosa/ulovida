@@ -25,6 +25,8 @@
       <% } %>
     </div>
     <% if (user.bio) { %><p class="bio"><%= user.bio %></p><% } %>
+    <%# No próprio perfil não há botões (Editar perfil e Sair estão nas Definições). %>
+    <% if (me.id !== user.id) { %>
     <div class="row">
         <form method="post" action="/u/<%= user.id %>/seguir">
           <% if (iFollow) { %>
@@ -34,8 +36,8 @@
           <% } %>
         </form>
         <a class="btn ghost small" href="/mensagens/<%= user.id %>"><%- include('partials/icon', { name: 'message' }) %> Mensagem</a>
-      <% } %>
     </div>
+    <% } %>
   </div>
 </section>
 
