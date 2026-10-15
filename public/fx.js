@@ -100,6 +100,11 @@ for (const form of document.querySelectorAll('form[data-once]')) {
   // Ao voltar atrás no browser, o botão fica outra vez ativo.
   addEventListener('pageshow', () => { delete form.dataset.sending; if (btn) { btn.disabled = false; btn.textContent = label; } });
 }
+// "Esqueci-me da password": leva o email já escrito para a página de recuperar.
+document.getElementById('forgot')?.addEventListener('click', (e) => {
+  const v = document.querySelector('form[action="/entrar"] input[name=email]')?.value.trim();
+  if (v) { e.preventDefault(); location.href = `/recuperar?email=${encodeURIComponent(v)}`; }
+});
 // "Já recebeste o código?": leva o email escrito para a página do código.
 document.getElementById('have-code')?.addEventListener('click', (e) => {
   const input = document.querySelector('form[action="/registar"] input[name=email]');

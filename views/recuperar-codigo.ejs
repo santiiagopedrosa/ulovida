@@ -1,0 +1,18 @@
+<%- include('partials/header') %>
+<section class="panel">
+  <h1>Nova password</h1>
+  <p class="muted">Se <strong><%= email %></strong> tem conta, enviámos um código de 6 dígitos. Vê também o separador <strong>Outros</strong> e o <strong>Lixo eletrónico</strong> do Outlook.</p>
+  <% if (locals.recent) { %><p class="muted small">Já te enviámos um código há menos de um minuto — usa esse.</p><% } %>
+  <form method="post" action="/recuperar/codigo" class="form" data-once>
+    <input type="hidden" name="email" value="<%= email %>">
+    <label>Código
+      <input class="code-input" name="code" value="<%= code %>" inputmode="numeric" autocomplete="one-time-code" pattern="\d{6}" maxlength="6" placeholder="000000" required autofocus>
+    </label>
+    <label>Nova password <span class="hint">Pelo menos 8 caracteres</span>
+      <input type="password" name="password" minlength="8" autocomplete="new-password" required>
+    </label>
+    <button class="btn block" data-busy="A guardar…">Mudar password</button>
+  </form>
+  <p class="muted small">Não recebeste? <a href="/recuperar?email=<%= encodeURIComponent(email) %>">Pedir um novo código</a>.</p>
+</section>
+<%- include('partials/footer') %>

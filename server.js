@@ -290,12 +290,8 @@ app.post('/registar', async (req, res) => {
   // Mesma resposta exista ou não conta, para não revelar quem está registado.
   // Envia um código de 6 dígitos em vez de um link: emails sem links são menos barrados pelos filtros do Outlook.
   if (!await db.get('SELECT 1 FROM users WHERE email = ?', email)) {
-    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-    await db.run('UPDATE email_tokens SET used = 1 WHERE email = ? AND code_hash IS NOT NULL', email);
-    await db.run('INSERT INTO email_tokens (token_hash, email, expires_at, code_hash) VALUES (?, ?, ?, ?)',
-      sha(newToken()), email, Date.now() + CODE_TTL_MS, sha(`${email}:${code}`));
     try {
-      await sendVerificationCode(email, code);
+      await issueCode(email, 'register');
     } catch (err) {
       console.error('Falha ao enviar o código:', err.message);
       return res.status(502).render('registar', { title: 'Registar', email, error: 'Não foi possível enviar o email. Tenta outra vez daqui a pouco.' });
@@ -312,21 +308,37 @@ app.get('/confirmar', (req, res) => {
   res.render('codigo', { title: 'Confirma o teu email', email, code: '', recent: req.query.recente === '1' });
 });
 
-app.post('/confirmar', async (req, res) => {
-  const email = str(req.body.email, 120).toLowerCase();
-  const code = str(req.body.code, 12).replace(/\D/g, '');
-  const fail = (error) => res.status(400).render('codigo', { title: 'Confirma o teu email', email, code, error });
-  const t = await db.get(`SELECT * FROM email_tokens WHERE email = ? AND code_hash IS NOT NULL AND used = 0 AND expires_at > ?
-                          ORDER BY expires_at DESC LIMIT 1`, email, Date.now());
-  if (!t || t.attempts >= CODE_MAX_ATTEMPTS) return fail('Este código expirou ou teve demasiadas tentativas. Pede um novo.');
+// Gera e envia um código de 6 dígitos (os anteriores do mesmo tipo deixam de valer).
+async function issueCode(email, purpose) {
+  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+  await db.run('UPDATE email_tokens SET used = 1 WHERE email = ? AND code_hash IS NOT NULL AND purpose = ?', email, purpose);
+  await db.run('INSERT INTO email_tokens (token_hash, email, expires_at, code_hash, purpose) VALUES (?, ?, ?, ?, ?)',
+    sha(newToken()), email, Date.now() + CODE_TTL_MS, sha(`${email}:${code}`), purpose);
+  await sendVerificationCode(email, code, purpose);
+}
+
+// Confere o código; se estiver certo, gasta-o. Devolve { error } quando falha.
+async function checkCode(email, code, purpose) {
+  const t = await db.get(`SELECT * FROM email_tokens WHERE email = ? AND code_hash IS NOT NULL AND purpose = ? AND used = 0 AND expires_at > ?
+                          ORDER BY expires_at DESC LIMIT 1`, email, purpose, Date.now());
+  if (!t || t.attempts >= CODE_MAX_ATTEMPTS) return { error: 'Este código expirou ou teve demasiadas tentativas. Pede um novo.' };
   const ok = code.length === 6 && crypto.timingSafeEqual(Buffer.from(sha(`${email}:${code}`)), Buffer.from(t.code_hash));
   if (!ok) {
     await db.run('UPDATE email_tokens SET attempts = attempts + 1 WHERE token_hash = ?', t.token_hash);
     const left = CODE_MAX_ATTEMPTS - t.attempts - 1;
-    return fail(left ? `Código errado. ${left === 1 ? 'Resta 1 tentativa' : `Restam ${left} tentativas`}.` : 'Código errado. Pede um novo código.');
+    return { error: left ? `Código errado. ${left === 1 ? 'Resta 1 tentativa' : `Restam ${left} tentativas`}.` : 'Código errado. Pede um novo código.' };
   }
-  // Código certo: troca-o por um token de uso único para o formulário de criar conta.
   await db.run('UPDATE email_tokens SET used = 1 WHERE token_hash = ?', t.token_hash);
+  return {};
+}
+
+app.post('/confirmar', async (req, res) => {
+  const email = str(req.body.email, 120).toLowerCase();
+  const code = str(req.body.code, 12).replace(/\D/g, '');
+  const fail = (error) => res.status(400).render('codigo', { title: 'Confirma o teu email', email, code, error });
+  const check = await checkCode(email, code, 'register');
+  if (check.error) return fail(check.error);
+  // Código certo: troca-o por um token de uso único para o formulário de criar conta.
   const token = newToken();
   await db.run('INSERT INTO email_tokens (token_hash, email, expires_at) VALUES (?, ?, ?)', sha(token), email, Date.now() + TOKEN_TTL_MS);
   res.render('completar', { title: 'Criar conta', token, email, form: {} });
@@ -374,6 +386,50 @@ app.post('/entrar', async (req, res) => {
   }
   await startSession(res, user.id);
   res.redirect('/eventos');
+});
+
+// ---------- esqueci-me da password ----------
+app.get('/recuperar', (req, res) => res.render('recuperar', { title: 'Recuperar password', email: str(req.query.email, 120) }));
+
+app.post('/recuperar', async (req, res) => {
+  const email = str(req.body.email, 120).toLowerCase();
+  if (!EMAIL_RE.test(email)) return res.status(400).render('recuperar', { title: 'Recuperar password', email, error: 'Escreve o teu email @ulo.pt.' });
+  const toCode = (extra = '') => res.redirect(303, `/recuperar/codigo?email=${encodeURIComponent(email)}${extra}`);
+  if (!canSend(email, req.ip)) return toCode('&recente=1');
+  // Mesma resposta exista ou não conta, para não revelar quem está registado.
+  if (await db.get('SELECT 1 FROM users WHERE email = ?', email)) {
+    try {
+      await issueCode(email, 'reset');
+    } catch (err) {
+      console.error('Falha ao enviar o código:', err.message);
+      return res.status(502).render('recuperar', { title: 'Recuperar password', email, error: 'Não foi possível enviar o email. Tenta outra vez daqui a pouco.' });
+    }
+  }
+  toCode();
+});
+
+app.get('/recuperar/codigo', (req, res) => {
+  const email = str(req.query.email, 120).toLowerCase();
+  if (!EMAIL_RE.test(email)) return res.redirect('/recuperar');
+  res.render('recuperar-codigo', { title: 'Nova password', email, code: '', recent: req.query.recente === '1' });
+});
+
+app.post('/recuperar/codigo', async (req, res) => {
+  const email = str(req.body.email, 120).toLowerCase();
+  const code = str(req.body.code, 12).replace(/\D/g, '');
+  const password = String(req.body.password || '');
+  const fail = (error) => res.status(400).render('recuperar-codigo', { title: 'Nova password', email, code, error });
+  // A password é vista primeiro, para um erro nela não gastar uma tentativa do código.
+  if (password.length < 8) return fail('A nova password tem de ter pelo menos 8 caracteres.');
+  const check = await checkCode(email, code, 'reset');
+  if (check.error) return fail(check.error);
+  const user = await db.get('SELECT id FROM users WHERE email = ?', email);
+  if (!user) return fail('Este código expirou ou teve demasiadas tentativas. Pede um novo.');
+  await db.run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(password), user.id);
+  // Termina todas as sessões abertas (ex.: num telemóvel perdido) e entra com a nova password.
+  await db.run('DELETE FROM sessions WHERE user_id = ?', user.id);
+  await startSession(res, user.id);
+  res.redirect('/eventos?password=1');
 });
 
 app.post('/sair', async (req, res) => {
@@ -504,7 +560,7 @@ app.get('/eventos', requireAuth, async (req, res) => {
     WHERE u.id != ${me} AND u.id NOT IN (SELECT followee_id FROM follows WHERE follower_id = ${me})
     ORDER BY (u.course = ? AND u.course != '') DESC, (u.school = ? AND u.school != '') DESC, followers DESC, u.id DESC
     LIMIT 5`, req.me.course || '', req.me.school || '');
-  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, suggestions, created: req.query.criado === '1' });
+  res.render('eventos', { title: 'Eventos', events, mine, tipo, stories, suggestions, created: req.query.criado === '1', passwordChanged: req.query.password === '1' });
 });
 
 // Pessoas que podem ser convidadas para um evento privado: quem eu sigo e quem me segue.

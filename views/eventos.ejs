@@ -26,6 +26,7 @@
   </div>
 </section>
 
+<% if (passwordChanged) { %><div class="notice" role="status"><%- include('partials/icon', { name: 'check' }) %><span>Password mudada. Terminámos a sessão nos outros aparelhos.</span></div><% } %>
 <% if (created) { %><div class="notice" role="status"><%- include('partials/icon', { name: 'check' }) %><span>Pedido enviado! O evento aparece aqui assim que for aprovado.</span></div><% } %>
 
 <%- include('partials/feed-tabs', { active: tipo }) %>

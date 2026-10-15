@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<section class="panel">
+  <h1>Esqueci-me da password</h1>
+  <p class="muted">Escreve o email da tua conta. Vamos enviar-te um código para escolheres uma password nova.</p>
+  <form method="post" action="/recuperar" class="form" data-once>
+    <label>Email institucional
+      <input type="email" name="email" value="<%= email %>" placeholder="nome@ulo.pt" pattern=".+@ulo\.pt" autocomplete="email" required autofocus>
+    </label>
+    <button class="btn block" data-busy="A enviar…">Enviar código</button>
+  </form>
+  <p class="muted small">Lembraste-te? <a href="/entrar">Voltar a entrar</a>.</p>
+</section>
+<%- include('partials/footer') %>

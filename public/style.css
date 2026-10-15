@@ -1036,3 +1036,5 @@ button.chat-user .muted { overflow: hidden; text-overflow: ellipsis; white-space
 .notif-day { margin: 22px 0 2px; font: 800 .75rem var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .notif-list > .notif-day:first-child { margin-top: 4px; }
 .notif-list { border-top: 0; }
+.form .forgot { justify-self: end; margin-top: -8px; color: var(--muted); }
+.form .forgot:hover { color: var(--ink); }

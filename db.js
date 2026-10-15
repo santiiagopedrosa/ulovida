@@ -222,6 +222,8 @@ const migrations = [
   ['comments', 'image_id', 'INTEGER'],
   // Quando a pessoa abriu as notificações pela última vez (as mais recentes contam como novas).
   ['users', 'notif_seen_at', 'INTEGER NOT NULL DEFAULT 0'],
+  // Para que serve o código: criar conta ('register') ou mudar a password ('reset').
+  ['email_tokens', 'purpose', "TEXT NOT NULL DEFAULT 'register'"],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);
