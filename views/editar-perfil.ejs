@@ -8,16 +8,15 @@
   <p class="muted"><%= novo ? 'Conta criada. Completa o teu perfil: tudo' : 'Tudo' %> o que está aqui é visível para outras pessoas da ULO.</p>
   <form method="post" action="/perfil/editar" class="form" enctype="multipart/form-data">
     <div class="photo-field">
-      <% if (form.photo_id) { %>
-        <img id="avatar-preview" class="avatar big" src="/img/<%= form.photo_id %>" alt="">
-      <% } else { %>
-        <img id="avatar-preview" class="avatar big" alt="" hidden>
-      <% } %>
+      <%# Tocar no círculo abre a galeria/câmara para escolher a foto de perfil. %>
+      <label class="avatar-pick" aria-label="<%= form.photo_id ? 'Mudar foto de perfil' : 'Escolher foto de perfil' %>">
+        <img id="avatar-preview" class="avatar big" <%- form.photo_id ? `src="/img/${form.photo_id}"` : 'hidden' %> alt="">
+        <span class="avatar-ph"><%- include('partials/avatar', { u: { ...form, photo_id: null }, big: true }) %></span>
+        <span class="avatar-pick-badge" aria-hidden="true"><%- include('partials/icon', { name: 'camera' }) %></span>
+        <input type="file" name="photo" accept="image/*" data-max="800" data-aspect="1" data-round data-preview="avatar-preview">
+      </label>
       <div>
-        <label class="btn ghost small file-btn">
-          <%- include('partials/icon', { name: 'camera' }) %> <%= form.photo_id ? 'Mudar foto' : 'Adicionar foto' %>
-          <input type="file" name="photo" accept="image/*" data-max="800" data-aspect="1" data-round data-preview="avatar-preview">
-        </label>
+        <p class="avatar-pick-tip"><%= form.photo_id ? 'Toca na foto para a mudar.' : 'Toca no círculo para escolher uma foto.' %></p>
         <% if (form.photo_id) { %>
           <label class="check"><input type="checkbox" name="remove_photo" value="1"> Remover foto</label>
         <% } %>

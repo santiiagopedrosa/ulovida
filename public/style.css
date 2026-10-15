@@ -343,13 +343,15 @@ img.avatar { object-fit: cover; background: var(--surface); }
 .profile-main { flex: 1; min-width: 240px; }
 /* Foto de perfil à direita do nome (no telemóvel ver a regra mais abaixo). */
 .profile > :first-child { order: 2; }
+/* No PC o texto não estica até ao fim, para a foto ficar mais perto do nome (mais para dentro). */
+@media (min-width: 641px) { .profile { flex-wrap: nowrap; } .profile-main { flex: 0 1 620px; min-width: 0; } .profile > :first-child { margin-left: 12px; } }
 .profile-main h1 { margin-bottom: 2px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 22px 0; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 /* No telemóvel a foto de perfil fica à direita, ao lado do nome. */
 @media (max-width: 640px) {
   .profile { position: relative; }
   .profile > :first-child { position: absolute; top: 0; right: 0; }
-  .profile > .avatar.big, .profile > .story-ring.big .avatar { width: 76px; height: 76px; font-size: 1.5rem; }
+  .profile > .avatar.big, .profile > .avatar-link .avatar, .profile > .story-ring.big .avatar { width: 76px; height: 76px; font-size: 1.5rem; }
   .profile-main > h1, .profile-main > h1 + .muted { padding-right: 96px; }
 }
 /* No telemóvel as informações ficam lado a lado, encostadas à esquerda (sem coluna a meio do ecrã). */
@@ -1056,3 +1058,33 @@ button.chat-user .muted { overflow: hidden; text-overflow: ellipsis; white-space
 .ptr.ready svg { transform: scale(1.1); }
 .ptr.loading { animation: ptr-spin .7s linear infinite; }
 @keyframes ptr-spin { to { transform: translate(-50%, var(--pull)) rotate(360deg); } }
+
+/* ---------- escolher foto de perfil tocando no círculo ---------- */
+.avatar-pick { position: relative; display: inline-grid !important; flex: none; width: 88px; height: 88px; border-radius: 50%; cursor: pointer; }
+.avatar-pick input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.avatar-pick .avatar { grid-area: 1 / 1; width: 88px; height: 88px; object-fit: cover; transition: filter .15s var(--ease), transform .15s var(--ease); }
+.avatar-pick .avatar-ph { grid-area: 1 / 1; display: grid; }
+.avatar-pick img:not([hidden]) + .avatar-ph { display: none; }
+.avatar-pick:hover .avatar { filter: brightness(.85); }
+.avatar-pick:active .avatar { transform: scale(.96); }
+.avatar-pick:has(input:focus-visible) { outline: 2px solid var(--yellow); outline-offset: 3px; }
+.avatar-pick-badge { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--yellow); color: var(--green-900); border: 3px solid var(--bg); }
+.avatar-pick-badge .icon { width: 15px; height: 15px; }
+.avatar-pick-tip { margin: 0 0 6px; font-weight: 500; color: var(--ink); }
+.avatar-link { display: inline-block; border-radius: 50%; }
+
+/* ---------- padrões (TESTE) — para tirar, apaga este bloco ---------- */
+/* Fundo com formas soltas nas cores da página inicial, muito suaves para não tirar leitura. */
+body {
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260' fill='none' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg opacity='.09'%3E%3Ccircle cx='34' cy='38' r='9' fill='%23f7eb7d' stroke='none'/%3E%3Cpath d='M150 30c10-12 20 12 30 0s20 12 30 0' stroke='%23c9dd9d'/%3E%3Cpath d='M92 112v26M79 125h26' stroke='%23acd9d6'/%3E%3Cpath d='M200 120a22 22 0 0 1 44 0' stroke='%23f1dadb'/%3E%3Cpath d='M40 200l14-24 14 24z' stroke='%23eb665b'/%3E%3Ccircle cx='170' cy='210' r='14' stroke='%23f7eb7d'/%3E%3Ccircle cx='238' cy='232' r='5' fill='%23acd9d6' stroke='none'/%3E%3Cpath d='M120 228c8-10 16 10 24 0' stroke='%23eb665b'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 260px 260px;
+}
+/* Faixa de cores por baixo do menu de cima e por cima do rodapé. */
+.top, .foot { position: relative; }
+.top::after, .foot::before {
+  content: ""; position: absolute; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--yellow) 0 20%, var(--lime) 20% 40%, var(--mint) 40% 60%, var(--pink) 60% 80%, var(--coral) 80% 100%);
+}
+.top::after { bottom: 0; }
+.foot::before { top: 0; }

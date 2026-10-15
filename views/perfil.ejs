@@ -2,6 +2,8 @@
 <section class="profile">
   <% if (hasStory) { %>
     <a class="story-ring big" href="/stories/<%= user.id %>" title="Ver stories"><%- include('partials/avatar', { u: user, big: true, vt: true }) %></a>
+  <% } else if (me.id === user.id) { %>
+    <a class="avatar-link" href="/perfil/editar" title="Mudar foto de perfil"><%- include('partials/avatar', { u: user, big: true, vt: true }) %></a>
   <% } else { %>
     <%- include('partials/avatar', { u: user, big: true, vt: true }) %>
   <% } %>
