@@ -1,8 +1,9 @@
-<% const tone = { ESTG: 'var(--lime)', ESECS: 'var(--mint)', ESSLei: 'var(--pink)', 'ESAD.CR': 'var(--coral)', ESTM: 'var(--yellow)' }[u.school] || 'var(--yellow)'; %>
 <% const role = staffRole(u.id); %>
+<% const tone = role ? 'var(--yellow)' : { ESTG: 'var(--lime)', ESECS: 'var(--mint)', ESSLei: 'var(--pink)', 'ESAD.CR': 'var(--coral)', ESTM: 'var(--yellow)' }[u.school] || 'var(--yellow)'; %>
 <div class="member-card <%= role ? 'founder' : '' %> <%= locals.reveal ? 'reveal-card' : '' %>" style="--tone: <%= tone %>" data-tilt>
+  <i class="mc-corner" aria-hidden="true"></i><i class="mc-dot" aria-hidden="true"></i>
   <div class="mc-top"><span class="mc-brand">ULOO<i></i></span><span class="mc-kind">Cartão de estudante</span></div>
-  <div class="mc-name"><%= u.name %> <%- include('badges', { id: u.id }) %></div>
+  <div class="mc-name"><span class="mc-name-text"><%= u.name %></span> <%- include('badges', { id: u.id }) %></div>
   <div class="mc-course"><%= [u.course, u.year].filter(Boolean).join(' · ') || 'Comunidade ULO' %></div>
   <div class="mc-bottom">
     <span><small>Nº</small><b><%= memberNo(u.id) %></b></span>
