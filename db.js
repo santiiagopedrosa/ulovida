@@ -244,6 +244,9 @@ const migrations = [
   ['users', 'notif_seen_at', 'INTEGER NOT NULL DEFAULT 0'],
   // Para que serve o código: criar conta ('register') ou mudar a password ('reset').
   ['email_tokens', 'purpose', "TEXT NOT NULL DEFAULT 'register'"],
+  // Preferências escolhidas nas Definições.
+  ['users', 'theme', "TEXT NOT NULL DEFAULT 'verde'"],
+  ['users', 'lang', "TEXT NOT NULL DEFAULT 'pt'"],
 ];
 for (const [table, column, type] of migrations) {
   const { rows } = await client.execute(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = '${column}'`);

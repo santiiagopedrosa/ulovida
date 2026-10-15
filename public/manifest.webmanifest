@@ -1,7 +1,7 @@
 {
   "name": "ULOO",
   "short_name": "ULOO",
-  "description": "A vida académica da comunidade ULO, toda num sítio.",
+  "description": "A rede social da ULO.",
   "start_url": "/eventos",
   "display": "standalone",
   "background_color": "#001e16",

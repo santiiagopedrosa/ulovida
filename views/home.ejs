@@ -2,7 +2,9 @@
 <section class="hero">
   <p class="eyebrow"><%- include('partials/icon', { name: 'lock' }) %> Acesso só com email @ulo.pt</p>
   <% let i = 0; const words = (t) => t.split(' ').map((w) => `<span style="--i:${i++}">${w}</span>`).join(' '); %>
-  <h1 class="blur-text" aria-label="A vida académica, toda num sítio."><span aria-hidden="true"><%- words('A vida académica,') %> <em><%- words('toda num sítio.') %></em></span></h1>
+  <%# Slogan do ULOO (a segunda parte fica em destaque). %>
+  <% const slogan = lang === 'en' ? ['The ULO', 'social network.'] : ['A rede social', 'da ULO.']; %>
+  <h1 class="blur-text" aria-label="<%= slogan.join(' ') %>"><span aria-hidden="true"><%- words(slogan[0]) %> <em><%- words(slogan[1]) %></em></span></h1>
   <p class="lead">O clube privado de quem estuda na ULO. Convívios, prés, momentos e conversas.</p>
   <div class="row">
     <a class="btn shine" href="/registar">Pedir o meu cartão</a>

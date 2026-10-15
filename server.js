@@ -5,6 +5,7 @@ import multer from 'multer';
 import sharp from 'sharp';
 import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { db } from './db.js';
+import './public/i18n-en.js';
 import { sendVerificationCode } from './mail.js';
 import { SCHOOLS, COURSES } from './courses.js';
 
@@ -239,6 +240,48 @@ app.use(async (req, res, next) => {
   });
   next();
 });
+
+// Tema e língua: da conta (se tiver sessão) ou do cookie (páginas de entrar/registar).
+const THEMES = { verde: { label: 'Verde ULO', color: '#011d15', scheme: 'dark' }, claro: { label: 'Claro', color: '#1c1c1c', scheme: 'light' }, preto: { label: 'Preto', color: '#000000', scheme: 'dark' } };
+const LANGS = { pt: 'Português', en: 'English' };
+app.use((req, res, next) => {
+  const theme = req.me?.theme || getCookie(req, 'theme');
+  const lang = req.me?.lang || getCookie(req, 'lang');
+  res.locals.theme = THEMES[theme] ? theme : 'verde';
+  res.locals.lang = LANGS[lang] ? lang : 'pt';
+  Object.assign(res.locals, { THEMES, LANGS });
+  // Em inglês, a página é traduzida antes de ser enviada (dicionário em public/i18n-en.js).
+  if (res.locals.lang === 'en') {
+    const render = res.render.bind(res);
+    res.render = (view, opts, cb) => render(view, opts, (err, html) => {
+      if (!err) html = translateHtml(html);
+      if (cb) return cb(err, html);
+      if (err) return req.next(err);
+      res.send(html);
+    });
+  }
+  next();
+});
+
+// Traduz o texto entre etiquetas e alguns atributos; deixa scripts, estilos e caixas de texto como estão.
+const { tr } = globalThis.ULOO_EN;
+function translateHtml(html) {
+  return html.split(/(<(?:script|style|textarea)\b[\s\S]*?<\/(?:script|style|textarea)>)/i).map((part, i) => {
+    if (i % 2) return part;
+    return part
+      .replace(/>([^<]+)</g, (m, text) => {
+        const plain = text.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        const out = tr(plain);
+        return out === plain ? m : `>${escapeHtml(out)}<`;
+      })
+      .replace(/\s(placeholder|aria-label|title|alt|data-label|data-busy|data-review|data-publish)="([^"]*)"/g, (m, attr, value) => {
+        const plain = value.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        const out = tr(plain);
+        return out === plain ? m : ` ${attr}="${escapeHtml(out)}"`;
+      });
+  }).join('');
+}
+const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const requireAuth = (req, res, next) => (req.me ? next() : res.redirect('/entrar'));
 // ---------- fotos ----------
@@ -1207,6 +1250,19 @@ app.post('/grupos/:id/sair', requireAuth, async (req, res) => {
     }
   }
   res.redirect('/mensagens');
+});
+
+// Guardar tema/língua: na conta e num cookie de 1 ano.
+app.post('/preferencias', async (req, res) => {
+  const prefs = {};
+  if (THEMES[req.body.theme]) prefs.theme = req.body.theme;
+  if (LANGS[req.body.lang]) prefs.lang = req.body.lang;
+  for (const [k, v] of Object.entries(prefs)) {
+    res.cookie(k, v, { sameSite: 'lax', secure: APP_URL.startsWith('https'), maxAge: 365 * 24 * 3_600_000 });
+    if (req.me) await db.run(`UPDATE users SET ${k} = ? WHERE id = ?`, v, req.me.id);
+  }
+  if (wantsJson(req)) return res.json({ ok: true, ...prefs });
+  res.redirect(backTo(req, '/definicoes'));
 });
 
 // Definições (sem JavaScript; com JavaScript abre como janela por cima da página).

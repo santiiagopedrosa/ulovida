@@ -174,4 +174,19 @@ if (settings && gear) {
   settings.querySelector('[data-close]').addEventListener('click', () => settings.close());
   settings.addEventListener('click', (e) => { if (e.target === settings) settings.close(); });
 }
+
+// Tema: muda logo e guarda em segundo plano. Língua: guarda e recarrega a página já traduzida.
+for (const form of document.querySelectorAll('.prefs-form')) {
+  form.addEventListener('change', async (e) => {
+    const { name, value } = e.target;
+    if (name === 'theme') {
+      document.documentElement.dataset.theme = value;
+      document.querySelectorAll(`.prefs-form input[name=theme][value="${value}"]`).forEach((i) => { i.checked = true; });
+    }
+    try {
+      await fetch('/preferencias', { method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ [name]: value }) });
+    } catch {}
+    if (name === 'lang') location.reload();
+  });
+}
 }

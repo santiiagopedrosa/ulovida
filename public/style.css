@@ -41,7 +41,7 @@
   --font-display: "Avenir Next", "Avenir", "Figtree", system-ui, sans-serif;
 }
 
-/* Tema verde-escuro da ULO: é o único, em todos os aparelhos. */
+/* Tema verde-escuro da ULO: o tema por omissão (os outros estão em "temas", mais abaixo). */
 :root {
   --bg: #022a1f;
   --card: #063427;
@@ -135,13 +135,19 @@ nav form { margin: 0; }
 .dock a.create .icon { stroke-width: 2.6; }
 /* Espaço para a ilha não tapar o fim das páginas. */
 body:has(.dock) main.wrap { padding-bottom: 120px; }
+/* No telemóvel o menu tem 7 botões: o ativo fica marcado só com a pílula amarela (sem o nome, que não cabe). */
 @media (max-width: 440px) {
   .dock { gap: 0; padding: 5px; }
   .dock a { height: 44px; min-width: 42px; padding: 0 10px; flex-shrink: 0; }
-  .dock a.on { padding-right: 13px; }
+  .dock a.on { padding-right: 10px; }
   .dock a.create { margin: 0 2px; }
+  .dock-label { display: none; }
 }
-@media (max-width: 380px) { .dock-label { display: none; } .dock a.on { padding-right: 10px; } }
+@media (max-width: 359px) {
+  .dock a { height: 42px; min-width: 38px; padding: 0 8px; }
+  .dock a.on { padding-right: 8px; }
+  .dock .icon { width: 20px; height: 20px; }
+}
 
 .foot { color: rgb(255 255 255 / .7); background: var(--header); font-size: .85rem; padding: 32px 0 48px; }
 .foot .wrap { display: flex; align-items: center; gap: 10px; }
@@ -1154,3 +1160,66 @@ body {
 .danger-row { border-bottom: 0; }
 .danger-row strong { color: var(--danger); }
 .danger-row .settings-icon { color: var(--danger); }
+
+/* ---------- temas (escolhidos nas Definições) ---------- */
+:root[data-theme="claro"] {
+  --bg: #f7f6ef;
+  --card: #ffffff;
+  --surface: #edede3;
+  --ink: #022a1f;
+  --ink-2: #1e3f35;
+  --muted: #56685f;
+  --line: #e1e3da;
+  --line-strong: #c4c9bd;
+  --accent: #022a1f;
+  --accent-hover: #0b4232;
+  --accent-text: #00704a;
+  --accent-soft: #eaf3e2;
+  --on-accent: #f7eb7d;
+  --header: #022a1f;
+  --pre: #b8402f;
+  --danger: #b8402f;
+  --danger-soft: #fbe6e3;
+  --warn-ink: #6b5400;
+  --warn-soft: #fbf4c4;
+  --ok-ink: #00593a;
+  --ok-soft: #dff3e8;
+  color-scheme: only light;
+}
+:root[data-theme="preto"] {
+  --bg: #000000;
+  --card: #0e0f0e;
+  --surface: #171917;
+  --ink: #f5f5ef;
+  --ink-2: #dedfd8;
+  --muted: #9da39e;
+  --line: #222522;
+  --line-strong: #353935;
+  --accent-soft: #1b1d14;
+  --header: #000000;
+}
+
+/* Escolha de tema e língua nas Definições */
+.prefs-form { display: grid; gap: 14px; padding: 16px 2px; border-bottom: 1px solid var(--line); }
+.prefs-group { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.prefs-group legend { padding: 0; margin-bottom: 8px; font: 800 .75rem var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.prefs-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pref-chip { display: inline-flex !important; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line-strong); border-radius: 99px; background: var(--surface); color: var(--ink); font: 600 .9rem var(--font) !important; cursor: pointer; transition: border-color .15s var(--ease), background .15s var(--ease); }
+.pref-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.pref-chip:has(input:checked) { border-color: var(--yellow); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--yellow); }
+.pref-chip:has(input:focus-visible) { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.pref-chip i { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgb(127 127 127 / .5); }
+.swatch-verde { background: linear-gradient(135deg, #022a1f 50%, #f7eb7d 50%); }
+.swatch-claro { background: linear-gradient(135deg, #f7f6ef 50%, #022a1f 50%); }
+.swatch-preto { background: linear-gradient(135deg, #000 50%, #f7eb7d 50%); }
+/* O cartão é sempre escuro: o texto não segue as cores do tema. */
+.member-card { color: #f7f5e8; }
+.member-card .mc-course { color: #dfe8dc; }
+/* Tema claro: o amarelo como cor de texto/ícone perde contraste no fundo claro, passa a verde. */
+:root[data-theme="claro"] :is(.hero-foot, .welcome-no b, .hero-stats b, .composer-img, .pw-toggle:hover, .pw-toggle[aria-pressed="true"], .comment-tool, .bubble-name, .bio-device > .icon, .settings-sheet .sheet-head .icon, .settings-icon) { color: var(--accent-text); }
+:root[data-theme="claro"] .gif-btn { border-color: var(--accent-text); color: var(--accent-text); }
+:root[data-theme="claro"] .gif-btn:hover { background: var(--accent-text); color: #fff; }
+:root[data-theme="claro"] .seal { color: #00a862; --seal-check: #fff; }
+:root[data-theme="claro"] .member-card .seal { color: var(--tone); --seal-check: #03231a; }
+:root[data-theme="claro"] .hero h1 { color: var(--ink); }
+:root[data-theme="claro"] .pref-chip:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }

@@ -14,6 +14,27 @@
       <%- include('icon', { name: 'chevron' }) %>
     </a>
   <% } %>
+  <%# Tema e língua: mudam logo ao tocar (sem JavaScript, usa o botão Guardar). %>
+  <form method="post" action="/preferencias" class="prefs-form">
+    <input type="hidden" name="voltar" value="<%= path %>">
+    <fieldset class="prefs-group">
+      <legend>Tema</legend>
+      <div class="prefs-chips">
+        <% for (const [k, t] of Object.entries(THEMES)) { %>
+          <label class="pref-chip"><input type="radio" name="theme" value="<%= k %>" <%= theme === k ? 'checked' : '' %>><i class="swatch-<%= k %>" aria-hidden="true"></i><%= t.label %></label>
+        <% } %>
+      </div>
+    </fieldset>
+    <fieldset class="prefs-group">
+      <legend>Língua</legend>
+      <div class="prefs-chips">
+        <% for (const [k, label] of Object.entries(LANGS)) { %>
+          <label class="pref-chip"><input type="radio" name="lang" value="<%= k %>" <%= lang === k ? 'checked' : '' %>><%= label %></label>
+        <% } %>
+      </div>
+    </fieldset>
+    <noscript><button class="btn small">Guardar</button></noscript>
+  </form>
   <form method="post" action="/sair" class="settings-row-form">
     <button class="settings-row danger-row">
       <span class="settings-icon"><%- include('icon', { name: 'logout' }) %></span>
