@@ -1211,10 +1211,39 @@ body {
 .pref-chip input { position: absolute; opacity: 0; pointer-events: none; }
 .pref-chip:has(input:checked) { border-color: var(--yellow); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--yellow); }
 .pref-chip:has(input:focus-visible) { outline: 2px solid var(--yellow); outline-offset: 2px; }
-.pref-chip i { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgb(127 127 127 / .5); }
-.swatch-verde { background: linear-gradient(135deg, #022a1f 50%, #f7eb7d 50%); }
-.swatch-claro { background: linear-gradient(135deg, #f7f6ef 50%, #022a1f 50%); }
-.swatch-preto { background: linear-gradient(135deg, #000 50%, #f7eb7d 50%); }
+/* Escolha de tema: miniaturas do site em cada tema (cores fixas, não seguem o tema atual). */
+.theme-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.theme-option { position: relative; display: grid !important; gap: 7px; justify-items: center; cursor: pointer; font: 600 .82rem var(--font) !important; color: var(--ink-2) !important; }
+.theme-option input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-prev {
+  --tp-bg: #022a1f; --tp-head: #011d15; --tp-card: #063427; --tp-line: rgb(247 245 232 / .55); --tp-btn: #f7eb7d; --tp-av: #acd9d6; --tp-edge: rgb(255 255 255 / .1);
+  position: relative; display: grid; grid-template-rows: 15% 3px auto auto 1fr; align-content: start; gap: 5px;
+  width: 100%; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 14px; background: var(--tp-bg);
+  box-shadow: 0 0 0 1px var(--line-strong), 0 6px 16px rgb(0 0 0 / .18);
+  transition: box-shadow .18s var(--ease), transform .18s var(--ease);
+}
+.theme-prev i { display: block; }
+.tp-head { position: relative; margin: 0 0 -5px; background: var(--tp-head); }
+.tp-head b { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 26%; height: 4px; border-radius: 2px; background: #fff; opacity: .9; }
+.tp-head b::after { content: ""; position: absolute; right: -7px; top: -1px; width: 6px; height: 6px; border-radius: 50%; background: #f7eb7d; }
+.tp-stripe { background: linear-gradient(90deg, #f7eb7d 0 20%, #c9dd9d 20% 40%, #acd9d6 40% 60%, #f1dadb 60% 80%, #eb665b 80%); }
+.tp-line { height: 5px; width: 62%; margin: 4px 0 0 9px; border-radius: 3px; background: var(--tp-line); }
+.tp-line.short { width: 40%; margin-top: 0; opacity: .6; }
+.tp-card { align-self: end; display: flex !important; align-items: center; justify-content: space-between; gap: 6px; margin: 0 8px 9px; padding: 7px; border-radius: 7px; background: var(--tp-card); box-shadow: inset 0 0 0 1px var(--tp-edge); }
+.tp-av { width: 14px; height: 14px; border-radius: 50%; background: var(--tp-av); }
+.tp-btn { width: 42%; height: 9px; border-radius: 3px; background: var(--tp-btn); }
+.tp-check { position: absolute; top: 22%; right: 7px; display: grid !important; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--yellow); color: var(--green-900); opacity: 0; scale: .6; transition: opacity .18s var(--ease), scale .18s var(--ease); }
+.tp-check .icon { width: 12px; height: 12px; stroke-width: 3.2; }
+.tp-claro { --tp-bg: #f7f6ef; --tp-head: #022a1f; --tp-card: #ffffff; --tp-line: rgb(2 42 31 / .55); --tp-btn: #022a1f; --tp-av: #c9dd9d; --tp-edge: #e1e3da; }
+.tp-preto { --tp-bg: #000000; --tp-head: #000000; --tp-card: #121312; --tp-line: rgb(245 245 239 / .5); --tp-btn: #f7eb7d; --tp-av: #f1dadb; --tp-edge: rgb(255 255 255 / .08); }
+.tp-preto .tp-head { box-shadow: inset 0 -1px 0 #222; }
+.theme-option:hover .theme-prev { transform: translateY(-2px); }
+.theme-option:has(input:checked) .theme-prev { box-shadow: 0 0 0 2px var(--yellow), 0 8px 20px rgb(0 0 0 / .25); }
+.theme-option:has(input:checked) .tp-check { opacity: 1; scale: 1; }
+.theme-option:has(input:checked) .theme-name { color: var(--ink) !important; }
+.theme-option:has(input:focus-visible) .theme-prev { outline: 2px solid var(--yellow); outline-offset: 3px; }
+:root[data-theme="claro"] .theme-option:has(input:checked) .theme-prev { box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgb(0 0 0 / .12); }
+:root[data-theme="claro"] .tp-check { background: var(--accent); color: #fff; }
 /* O cartão é sempre escuro: o texto não segue as cores do tema. */
 .member-card { color: #f7f5e8; }
 .member-card .mc-course { color: #dfe8dc; }

@@ -19,9 +19,19 @@
     <input type="hidden" name="voltar" value="<%= path %>">
     <fieldset class="prefs-group">
       <legend>Tema</legend>
-      <div class="prefs-chips">
+      <div class="theme-picker">
         <% for (const [k, t] of Object.entries(THEMES)) { %>
-          <label class="pref-chip"><input type="radio" name="theme" value="<%= k %>" <%= theme === k ? 'checked' : '' %>><i class="swatch-<%= k %>" aria-hidden="true"></i><%= t.label %></label>
+          <%# Cada opção mostra uma miniatura do site nesse tema. %>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="<%= k %>" <%= theme === k ? 'checked' : '' %>>
+            <span class="theme-prev tp-<%= k %>" aria-hidden="true">
+              <i class="tp-head"><b></b></i><i class="tp-stripe"></i>
+              <i class="tp-line"></i><i class="tp-line short"></i>
+              <i class="tp-card"><i class="tp-av"></i><i class="tp-btn"></i></i>
+              <i class="tp-check"><%- include('icon', { name: 'check' }) %></i>
+            </span>
+            <span class="theme-name"><%= t.label %></span>
+          </label>
         <% } %>
       </div>
     </fieldset>
