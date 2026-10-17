@@ -36,7 +36,7 @@
         <% for (const [k, v] of Object.entries(PRAXE)) { %><option value="<%= k %>" <%= form.praxe === k ? 'selected' : '' %>><%= v %></option><% } %>
       </select>
     </label>
-    <label id="praxe-name-field" <%= form.praxe && form.praxe !== 'nao' ? '' : 'hidden' %>>Nome de praxe <span class="hint">Opcional — como te chamam na praxe</span>
+    <label id="praxe-name-field" <%= form.praxe && form.praxe !== 'nao' ? '' : 'hidden' %>>Nome de praxe <span class="hint"></span>
       <input name="praxe_name" value="<%= form.praxe_name || '' %>" maxlength="40" placeholder="ex: Caloiro Pastel de Nata">
     </label>
     <script>

@@ -3,9 +3,9 @@
   <p class="eyebrow"><%- include('partials/icon', { name: 'lock' }) %> Acesso só com email @ulo.pt</p>
   <% let i = 0; const words = (t) => t.split(' ').map((w) => `<span style="--i:${i++}">${w}</span>`).join(' '); %>
   <%# Slogan do ULOO (a segunda parte fica em destaque). %>
-  <% const slogan = lang === 'en' ? ['The ULO', 'social network.'] : ['A rede social', 'da ULO.']; %>
+  <% const slogan = lang === 'en' ? ['The ULO', 'social network.'] : ['A rede social', 'da UNIVERSIDADE DE LEIRIA.']; %>
   <h1 class="blur-text" aria-label="<%= slogan.join(' ') %>"><span aria-hidden="true"><%- words(slogan[0]) %> <em><%- words(slogan[1]) %></em></span></h1>
-  <p class="lead">O clube privado de quem estuda na ULO. Convívios, prés, momentos e conversas.</p>
+  <p class="lead">O clube privado de quem estuda na Universidade de Leiria. Convívios, prés, momentos e conversas.</p>
   <div class="row">
     <a class="btn shine" href="/registar">Pedir o meu cartão</a>
     <a class="btn ghost" href="/entrar">Já sou membro</a>
@@ -13,7 +13,7 @@
   <div class="hero-stats">
     <div><b data-count="<%= memberCount %>"><%= memberCount %></b><span>membros</span></div>
     <div><b data-count="5">5</b><span>escolas</span></div>
-    <div><b data-count="198">198</b><span>cursos</span></div>
+    <div><b data-count="198">195</b><span>cursos</span></div>
   </div>
 </section>
 
